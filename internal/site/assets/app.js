@@ -231,9 +231,7 @@
     return keys.map((k) => m.get(k));
   }
   function overview(rows, sheetYear) {
-    const o = { projects: rows.length, onAxis: 0, initial: 0, current: 0, executed: 0, execRate: null, withSignals: 0, contradictions: 0 };
-    let rc = 0;
-    let re = 0;
+    const o = { projects: rows.length, onAxis: 0, initial: 0, current: 0, executed: 0, rateExecuted: 0, rateCurrent: 0, execRate: null, withSignals: 0, contradictions: 0 };
     for (const r of rows) {
       if (r.signalCodes.length > 0) o.withSignals++;
       if (r.verdict === 3) o.contradictions++;
@@ -243,11 +241,11 @@
       o.current += r.current ?? 0;
       o.executed += r.executed ?? 0;
       if (!r.execState && r.current !== null && r.current > 0 && r.executed !== null) {
-        rc += r.current;
-        re += r.executed;
+        o.rateCurrent += r.current;
+        o.rateExecuted += r.executed;
       }
     }
-    o.execRate = rc > 0 ? re / rc : null;
+    o.execRate = o.rateCurrent > 0 ? o.rateExecuted / o.rateCurrent : null;
     return o;
   }
   function ministryTotals(rows, sheetYear) {
@@ -582,9 +580,9 @@
       { class: "stats" },
       stat("\u4E8B\u696D\u6570", num(o.projects), o.onAxis < o.projects ? `\u91D1\u984D\u306E\u5408\u8A08\u306F FY${n2} \u8EF8\u306E ${num(o.onAxis)} \u4E8B\u696D` : `${meta.sheetYear}\u5E74\u5EA6\u30B7\u30FC\u30C8`),
       stat(`FY${n2} \u5F53\u521D\u4E88\u7B97`, yenShort(o.initial), "\u4E8B\u696D\u3054\u3068\u306E\u5024\u306E\u5358\u7D14\u5408\u8A08\uFF08\u56FD\u306E\u4E88\u7B97\u7DCF\u984D\u3068\u306F\u4E00\u81F4\u3057\u306A\u3044\uFF09", "", yenFull(o.initial)),
-      stat(`FY${n2} \u57F7\u884C\u7387`, pct(o.execRate), `\u57F7\u884C ${yenShort(o.executed)} \uFF0F \u73FE\u984D ${yenShort(o.current)}`, "", "\u57F7\u884C\u984D\u306E\u5408\u8A08 \xF7 \u6B73\u51FA\u4E88\u7B97\u73FE\u984D\u306E\u5408\u8A08\uFF08\u73FE\u984D\u304C 0 \u4EE5\u4E0B\u306E\u4E8B\u696D\u3092\u9664\u304F\uFF09"),
-      stat("\u5146\u5019\u306E\u3042\u308B\u4E8B\u696D", num(o.withSignals), `\u5168\u4F53\u306E ${pct(o.projects ? o.withSignals / o.projects : null, 0)} \u2192 \u65AD\u7D76\u3092\u63A2\u3059`, "#gaps"),
-      multi ? stat("\u30EB\u30FC\u30D7\u691C\u8A3C\u3067\u300C\u77DB\u76FE\u300D", num(o.contradictions), "\u53CD\u6620\u3068\u9006\u306B\u5897\u984D \u2192 \u30EB\u30FC\u30D7\u691C\u8A3C", "#loops?v=3") : null
+      stat(`FY${n2} \u57F7\u884C\u7387`, pct(o.execRate), `\u57F7\u884C ${yenShort(o.rateExecuted)} \uFF0F \u73FE\u984D ${yenShort(o.rateCurrent)}\uFF08\u73FE\u984D 0 \u4EE5\u4E0B\u3092\u9664\u304F\uFF09`, "", "\u57F7\u884C\u984D\u306E\u5408\u8A08 \xF7 \u6B73\u51FA\u4E88\u7B97\u73FE\u984D\u306E\u5408\u8A08\u3002\u57F7\u884C\u304C\u78BA\u5B9A\u3057\u3001\u6B73\u51FA\u4E88\u7B97\u73FE\u984D\u304C\u6B63\u306E\u4E8B\u696D\u3060\u3051\u3067\u8A08\u7B97"),
+      stat("\u5146\u5019\u306E\u3042\u308B\u4E8B\u696D", num(o.withSignals), `\u5168\u4F53\u306E ${pct(o.projects ? o.withSignals / o.projects : null, 0)}\u3002\u3053\u306E\u30B5\u30A4\u30C8\u72EC\u81EA\u306E\u5224\u5B9A \u2192 \u65AD\u7D76\u3092\u63A2\u3059`, "#gaps"),
+      multi ? stat("\u30EB\u30FC\u30D7\u691C\u8A3C\u3067\u300C\u77DB\u76FE\u300D", num(o.contradictions), "\u53CD\u6620\u3068\u9006\u306B\u5897\u984D\u3002\u3053\u306E\u30B5\u30A4\u30C8\u72EC\u81EA\u306E\u5224\u5B9A \u2192 \u30EB\u30FC\u30D7\u691C\u8A3C", "#loops?v=3") : null
     );
     const totals = ministryTotals(rows, meta.sheetYear);
     const max = Math.max(1, ...totals.map((t) => t.initial));
@@ -609,7 +607,7 @@
       { class: "overview" },
       stats,
       h("h3", {}, `\u5E9C\u7701\u5E81\u5225\u306E FY${n2} \u5F53\u521D\u4E88\u7B97`, h("small", { class: "muted" }, " \u62BC\u3059\u3068\u4E00\u89A7\u3092\u305D\u306E\u5E9C\u7701\u5E81\u3067\u7D5E\u308A\u8FBC\u307F\u307E\u3059")),
-      h("p", { class: "note muted" }, "\u4E00\u822C\u4F1A\u8A08\u3068\u7279\u5225\u4F1A\u8A08\u306E\u4E8B\u696D\u3092\u5358\u7D14\u306B\u8DB3\u3057\u305F\u5024\u3067\u3059\u3002\u4F1A\u8A08\u9593\u306E\u7E70\u5165\u308C\u3067\u91CD\u8907\u3057\u3046\u308B\u305F\u3081\u3001\u56FD\u306E\u4E88\u7B97\u7DCF\u984D\u3068\u306F\u4E00\u81F4\u3057\u307E\u305B\u3093\u3002\u68D2\u306E\u9577\u3055\u306F\u91D1\u984D\u306B\u6BD4\u4F8B\u3057\u307E\u3059\u3002"),
+      h("p", { class: "note muted" }, "\u4E00\u822C\u4F1A\u8A08\u3068\u7279\u5225\u4F1A\u8A08\u306E\u4E8B\u696D\u3092\u5358\u7D14\u306B\u8DB3\u3057\u305F\u5024\u3067\u3059\u3002\u4F1A\u8A08\u9593\u306E\u7E70\u5165\u308C\u3067\u91CD\u8907\u3057\u3046\u308B\u305F\u3081\u3001\u56FD\u306E\u4E88\u7B97\u7DCF\u984D\u3068\u306F\u4E00\u81F4\u3057\u307E\u305B\u3093\u3002\u68D2\u306E\u9577\u3055\u306F\u91D1\u984D\u306B\u6BD4\u4F8B\u3057\u307E\u3059\u3002\u300C\u5146\u5019\u300D\u306E\u4EF6\u6570\u306F\u3053\u306E\u30B5\u30A4\u30C8\u72EC\u81EA\u306E\u5224\u5B9A\u3067\u3001\u516C\u5F0F\u306E\u8A55\u4FA1\u3067\u306F\u3042\u308A\u307E\u305B\u3093\u3002"),
       list,
       more
     );

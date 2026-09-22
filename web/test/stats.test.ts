@@ -36,7 +36,7 @@ test("overview sums only rows on the base sheet year", () => {
     row({ sheetYear: 2024, initial: 1000, current: 1000, executed: 10, signalCodes: ["low_execution"] }),
   ];
   const o = overview(rows, 2025);
-  assert.deepEqual({ ...o, execRate: null }, { projects: 4, onAxis: 3, initial: 150, current: 120, executed: 120, execRate: null, withSignals: 2, contradictions: 1 });
+  assert.deepEqual({ ...o, execRate: null }, { projects: 4, onAxis: 3, initial: 150, current: 120, executed: 120, rateExecuted: 90, rateCurrent: 120, execRate: null, withSignals: 2, contradictions: 1 });
   assert.equal(o.execRate, 90 / 120);
   assert.equal(overview([row({ sheetYear: 2025 })], 2025).execRate, null);
 });

@@ -74,16 +74,17 @@ export interface Overview {
   initial: number;
   current: number;
   executed: number;
-  /** 執行額の合計 ÷ 歳出予算現額の合計（どちらも確定し、現額が正の行だけ）。対象がなければ null */
+  /** 執行率の分子と分母: 執行が確定し、現額が正の行だけの執行額・現額の合計 */
+  rateExecuted: number;
+  rateCurrent: number;
+  /** rateExecuted ÷ rateCurrent。対象がなければ null */
   execRate: number | null;
   withSignals: number;
   contradictions: number;
 }
 
 export function overview(rows: Row[], sheetYear: number): Overview {
-  const o: Overview = { projects: rows.length, onAxis: 0, initial: 0, current: 0, executed: 0, execRate: null, withSignals: 0, contradictions: 0 };
-  let rc = 0;
-  let re = 0;
+  const o: Overview = { projects: rows.length, onAxis: 0, initial: 0, current: 0, executed: 0, rateExecuted: 0, rateCurrent: 0, execRate: null, withSignals: 0, contradictions: 0 };
   for (const r of rows) {
     if (r.signalCodes.length > 0) o.withSignals++;
     if (r.verdict === 3) o.contradictions++;
@@ -93,11 +94,11 @@ export function overview(rows: Row[], sheetYear: number): Overview {
     o.current += r.current ?? 0;
     o.executed += r.executed ?? 0;
     if (!r.execState && r.current !== null && r.current > 0 && r.executed !== null) {
-      rc += r.current;
-      re += r.executed;
+      o.rateCurrent += r.current;
+      o.rateExecuted += r.executed;
     }
   }
-  o.execRate = rc > 0 ? re / rc : null;
+  o.execRate = o.rateCurrent > 0 ? o.rateExecuted / o.rateCurrent : null;
   return o;
 }
 
