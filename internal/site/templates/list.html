@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>事業一覧（府省庁別） | zailoop</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body class="list">
+<nav class="top"><a href="index.html">← ダッシュボード</a> <span class="muted">zailoop</span></nav>
+<h1>事業一覧（府省庁別） <small class="muted">{{.Meta.SheetYear}}年度シート {{.Meta.Count}} 事業</small></h1>
+<p class="muted">JavaScript なしで辿れる一覧です。検索・絞り込みは <a href="index.html">ダッシュボード</a> を使ってください。</p>
+<ul class="toc">{{range .Groups}}<li><a href="#m-{{.Ministry}}">{{.Ministry}}</a> <span class="muted">({{len .Rows}})</span></li>{{end}}</ul>
+{{range .Groups}}
+<h2 id="m-{{.Ministry}}">{{.Ministry}} <small>{{len .Rows}} 事業</small></h2>
+<ul>{{range .Rows}}<li><a href="p/{{.ID}}.html">{{.ID}} {{.Name}}</a></li>{{end}}</ul>
+{{end}}
+<footer><p>{{.Attribution}}</p><p class="muted">生成: {{.Meta.Generated}}</p></footer>
+</body>
+</html>

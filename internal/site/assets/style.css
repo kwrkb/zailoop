@@ -1,0 +1,25 @@
+:root { --fg:#222; --muted:#6b7280; --bg:#fff; --line:#e5e7eb; --bar:#2563eb; --neg:#dc2626; --none:#d1d5db; --badge:#fef3c7; --badgefg:#92400e; }
+* { box-sizing:border-box; }
+body { margin:0; padding:16px; font:15px/1.6 system-ui,-apple-system,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif; color:var(--fg); background:var(--bg); max-width:1100px; margin-inline:auto; }
+a { color:#1d4ed8; }
+h1 { font-size:1.4rem; margin:0.2em 0; } h2 { font-size:1.1rem; border-bottom:1px solid var(--line); padding-bottom:4px; margin:1.6em 0 0.6em; } h3 { font-size:1rem; margin:1em 0 0.4em; }
+h2 small { font-weight:normal; color:var(--muted); font-size:0.8rem; margin-left:8px; }
+.muted, .sub { color:var(--muted); } .sub { font-size:0.9em; }
+nav.top { display:flex; justify-content:space-between; font-size:0.9rem; }
+.id { color:var(--muted); font-weight:normal; margin-right:6px; }
+.org { margin:0; } .meta span { display:inline-block; margin-right:12px; color:var(--muted); font-size:0.9rem; }
+.axis { background:#f3f4f6; padding:4px 8px; border-radius:4px; display:inline-block; font-size:0.9rem; }
+.badge { display:inline-block; background:var(--badge); color:var(--badgefg); border-radius:999px; padding:1px 10px; margin-right:6px; font-size:0.85rem; }
+details { margin:4px 0; } details p { margin:4px 0 8px; white-space:pre-wrap; }
+dl { display:grid; grid-template-columns:max-content 1fr; gap:4px 16px; margin:0; }
+dt { color:var(--muted); white-space:nowrap; } dd { margin:0; white-space:pre-wrap; }
+.bars .bar { display:grid; grid-template-columns:220px 1fr 160px; align-items:center; gap:8px; margin:4px 0; }
+.bars .value { text-align:right; font-variant-numeric:tabular-nums; }
+svg { width:100%; height:14px; display:block; } rect { fill:var(--bar); } .neg rect { fill:var(--neg); } .none rect { fill:var(--none); }
+table { border-collapse:collapse; width:100%; font-size:0.95rem; } th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+td.num, td.rate span { text-align:right; font-variant-numeric:tabular-nums; }
+.yeartable td { min-width:160px; } .yeartable td span, td.rate span { display:block; font-size:0.85rem; color:var(--muted); }
+td.rate svg { height:8px; }
+.notes ul { margin:0; padding-left:20px; }
+footer { margin-top:2em; padding-top:1em; border-top:1px solid var(--line); font-size:0.85rem; }
+@media (max-width:700px) { .bars .bar { grid-template-columns:1fr; gap:2px; } .bars .value { text-align:left; } dl { grid-template-columns:1fr; } }

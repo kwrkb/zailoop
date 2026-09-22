@@ -1,0 +1,23 @@
+/* index.html（一覧・横断ビュー）用。style.css に続けて読む。 */
+.index h1 small { font-size: 0.8rem; font-weight: normal; margin-left: 8px; }
+#nav a { margin-right: 14px; } #nav a.on { font-weight: bold; text-decoration: none; color: var(--fg); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.controls input[type="search"] { flex: 1 1 260px; padding: 6px 8px; font: inherit; }
+.controls select, .controls button { padding: 6px 8px; font: inherit; }
+table.rows { font-size: 0.9rem; } table.rows th { position: sticky; top: 0; background: var(--bg); }
+table.rows th.num, table.rows td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.rows td.id { color: var(--muted); white-space: nowrap; }
+table.rows td.name { min-width: 240px; } table.rows td.name .spark { width: 60px; height: 12px; display: inline-block; margin-left: 6px; vertical-align: middle; }
+table.rows td.rate { min-width: 110px; } table.rows td.rate .bar { width: 100%; height: 8px; } table.rows td.rate span { font-size: 0.85rem; color: var(--muted); }
+table.rows td.badges .badge { margin: 1px 4px 1px 0; font-size: 0.78rem; white-space: nowrap; }
+table.rows td.rates { font-size: 0.8rem; max-width: 220px; }
+.more { text-align: center; } .more button { padding: 8px 16px; font: inherit; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 8px 0; }
+.tile { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 8px; align-items: center; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; cursor: pointer; }
+.tile.on { border-color: var(--bar); background: #eff6ff; }
+.tile .n { font-weight: bold; font-variant-numeric: tabular-nums; } .tile .th { grid-column: 2 / 4; font-size: 0.78rem; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
+.tabs button { padding: 6px 10px; font: inherit; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; cursor: pointer; }
+.tabs button.on { border-color: var(--bar); background: #eff6ff; } .tabs .n { font-weight: bold; margin-left: 4px; }
+.histwrap { max-width: 720px; } .histwrap svg.hist { height: 200px; } .hist text { font-size: 4px; fill: var(--muted); } .hist text.count { fill: var(--fg); }
+.error { color: var(--neg); }

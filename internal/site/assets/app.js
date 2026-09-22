@@ -1,0 +1,646 @@
+"use strict";
+(() => {
+  // src/data.ts
+  var n = (v) => v === void 0 ? null : v;
+  function decodeRow(r, meta) {
+    const sg = r.sg ?? 0;
+    return {
+      id: r.id,
+      name: r.n,
+      ministry: meta.ministries[r.m] ?? "",
+      category: meta.categories[r.c] ?? "",
+      reflection: r.rf >= 0 ? meta.reflections[r.rf] ?? "" : "",
+      request: n(r.rq),
+      initial: n(r.in),
+      current: n(r.cu),
+      executed: n(r.ex),
+      execRate: n(r.er),
+      execState: r.xs ?? "",
+      carriedOut: n(r.co),
+      unused: n(r.un),
+      unusedDiff: n(r.ud),
+      unusedState: r.us ?? "",
+      reflected: n(r.ra),
+      nextInitial: n(r.ni),
+      nextRequest: n(r.nr),
+      byYear: r.yr ?? [],
+      outcomes: r.oc ?? 0,
+      rates: r.or ?? [],
+      signals: sg,
+      signalCodes: meta.signals.filter((s) => (sg & s.bit) !== 0).map((s) => s.code)
+    };
+  }
+  function decode(p) {
+    return { meta: p.meta, rows: p.rows.map((r) => decodeRow(r, p.meta)) };
+  }
+
+  // src/dom.ts
+  var RawHTML = class {
+    html;
+    constructor(html) {
+      this.html = html;
+    }
+  };
+  var raw = (html) => new RawHTML(html);
+  function h(tag, attrs = {}, ...children) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (typeof v === "function") el.addEventListener(k.replace(/^on/, ""), v);
+      else if (v === true) el.setAttribute(k, "");
+      else if (v !== false) el.setAttribute(k, v);
+    }
+    append(el, children);
+    return el;
+  }
+  function append(el, children) {
+    for (const c of children) {
+      if (c === null || c === void 0 || c === false) continue;
+      if (Array.isArray(c)) append(el, c);
+      else if (c instanceof RawHTML) el.insertAdjacentHTML("beforeend", c.html);
+      else if (typeof c === "string") el.appendChild(document.createTextNode(c));
+      else el.appendChild(c);
+    }
+  }
+
+  // src/state.ts
+  function parseHash(hash) {
+    const h2 = hash.startsWith("#") ? hash.slice(1) : hash;
+    const [view, query = ""] = h2.split("?");
+    return { view: view || "list", params: new URLSearchParams(query) };
+  }
+  function buildHash(view, params) {
+    const q = params.toString();
+    return `#${view}${q ? "?" + q : ""}`;
+  }
+
+  // src/filter.ts
+  function normalize(s) {
+    return s.normalize("NFKC").toLowerCase().replace(/\s+/g, "");
+  }
+  function applyFilter(rows, f) {
+    const q = f.q ? normalize(f.q) : "";
+    const sigs = f.signals ?? [];
+    return rows.filter((r) => {
+      if (f.ministry && r.ministry !== f.ministry) return false;
+      if (f.category && r.category !== f.category) return false;
+      if (q && r.id !== q && !normalize(r.name).includes(q)) return false;
+      if (sigs.length > 0) {
+        const has = sigs.map((c) => r.signalCodes.includes(c));
+        if (f.mode === "and" ? !has.every(Boolean) : !has.some(Boolean)) return false;
+      }
+      return true;
+    });
+  }
+  var SORT_KEYS = ["id", "request", "initial", "current", "executed", "execRate", "unused", "nextRequest", "signals", "minRate", "maxRate"];
+  function sortValue(r, key) {
+    switch (key) {
+      case "id":
+        return Number(r.id);
+      case "request":
+        return r.request;
+      case "initial":
+        return r.initial;
+      case "current":
+        return r.current;
+      case "executed":
+        return r.executed;
+      case "execRate":
+        return r.execRate;
+      case "unused":
+        return r.unused;
+      case "nextRequest":
+        return r.nextRequest;
+      case "signals":
+        return r.signalCodes.length;
+      case "minRate":
+        return r.rates.length ? Math.min(...r.rates) : null;
+      case "maxRate":
+        return r.rates.length ? Math.max(...r.rates) : null;
+    }
+  }
+  function sortRows(rows, key, dir) {
+    const sign = dir === "asc" ? 1 : -1;
+    return rows.map((r, i) => ({ r, i, v: sortValue(r, key) })).sort((a, b) => {
+      if (a.v === null && b.v === null) return a.i - b.i;
+      if (a.v === null) return 1;
+      if (b.v === null) return -1;
+      return a.v === b.v ? a.i - b.i : (a.v - b.v) * sign;
+    }).map((x) => x.r);
+  }
+  function parseSort(s, def = "id", defDir = "asc") {
+    if (!s) return { key: def, dir: defDir };
+    const [k, d] = s.split(":");
+    const key = SORT_KEYS.includes(k) ? k : def;
+    const dir = d === "asc" || d === "desc" ? d : defDir;
+    return { key, dir };
+  }
+
+  // src/format.ts
+  function yenFull(v) {
+    if (v === null) return "\u2014";
+    return `${v.toLocaleString("ja-JP")} \u5186`;
+  }
+  function yenShort(v) {
+    if (v === null) return "\u2014";
+    const neg = v < 0;
+    const a = Math.abs(v);
+    let s;
+    if (a >= 1e12) s = `${trim(a / 1e12)} \u5146\u5186`;
+    else if (a >= 1e8) s = `${trim(a / 1e8)} \u5104\u5186`;
+    else if (a >= 1e4) s = `${trim(a / 1e4)} \u4E07\u5186`;
+    else s = `${a} \u5186`;
+    return neg ? `-${s}` : s;
+  }
+  function trim(x) {
+    return x >= 100 ? Math.round(x).toLocaleString("ja-JP") : (Math.round(x * 10) / 10).toString();
+  }
+  function pct(v, digits = 1) {
+    if (v === null) return "\u2014";
+    return `${(v * 100).toFixed(digits)}%`;
+  }
+  function ratePct(v) {
+    if (v === null) return "\u2014";
+    return `${Math.round(v * 10) / 10}%`;
+  }
+
+  // src/stats.ts
+  function rateBins() {
+    return [
+      { label: "<50", count: 0, test: (v) => v < 50 },
+      { label: "50\u201380", count: 0, test: (v) => v >= 50 && v < 80 },
+      { label: "80\u2013100", count: 0, test: (v) => v >= 80 && v < 100 },
+      { label: "100", count: 0, test: (v) => v === 100 },
+      { label: "100\u2013120", count: 0, test: (v) => v > 100 && v <= 120 },
+      { label: "120\u2013200", count: 0, test: (v) => v > 120 && v <= 200 },
+      { label: ">200", count: 0, test: (v) => v > 200 }
+    ];
+  }
+  function histogram(rows) {
+    const bins = rateBins();
+    for (const r of rows) {
+      for (const v of r.rates) {
+        const b = bins.find((x) => x.test(v));
+        if (b) b.count++;
+      }
+    }
+    return bins;
+  }
+  function countSignals(rows, codes) {
+    const m = new Map(codes.map((c) => [c, 0]));
+    for (const r of rows) for (const c of r.signalCodes) m.set(c, (m.get(c) ?? 0) + 1);
+    return m;
+  }
+  function withRates(rows) {
+    return rows.filter((r) => r.rates.length > 0);
+  }
+
+  // src/svg.ts
+  var esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+  function bar(ratio, cls = "") {
+    const w = ratio === null ? 0 : Math.max(0, Math.min(1, ratio)) * 100;
+    return `<svg class="bar ${esc(cls)}" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="1" height="8" width="${w.toFixed(1)}"></rect></svg>`;
+  }
+  function sparkline(values) {
+    const vals = values.filter((v) => v !== null && v >= 0);
+    const max = vals.length ? Math.max(...vals) : 0;
+    const n2 = values.length || 1;
+    const w = 100 / n2;
+    const rects = values.map((v, i) => {
+      if (v === null || max <= 0) return "";
+      const h2 = v / max * 10;
+      return `<rect x="${(i * w + 1).toFixed(1)}" y="${(10 - h2).toFixed(1)}" width="${(w - 2).toFixed(1)}" height="${h2.toFixed(1)}"></rect>`;
+    }).join("");
+    return `<svg class="spark" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">${rects}</svg>`;
+  }
+  function histogramSvg(bins) {
+    const max = Math.max(1, ...bins.map((b) => b.count));
+    const n2 = bins.length || 1;
+    const w = 100 / n2;
+    const bars = bins.map((b, i) => {
+      const h2 = b.count / max * 40;
+      const x = i * w;
+      return `<rect x="${(x + 2).toFixed(1)}" y="${(40 - h2).toFixed(1)}" width="${(w - 4).toFixed(1)}" height="${h2.toFixed(1)}"><title>${esc(b.label)}: ${b.count}</title></rect><text x="${(x + w / 2).toFixed(1)}" y="47" text-anchor="middle">${esc(b.label)}</text><text x="${(x + w / 2).toFixed(1)}" y="${Math.max(6, 40 - h2 - 2).toFixed(1)}" text-anchor="middle" class="count">${b.count}</text>`;
+    }).join("");
+    return `<svg class="hist" viewBox="0 0 100 50">${bars}</svg>`;
+  }
+
+  // src/views/common.ts
+  var PAGE = 100;
+  function nameCell(r) {
+    return h("td", { class: "name" }, h("a", { href: `p/${r.id}.html` }, r.name), raw(sparkline(r.byYear)));
+  }
+  function yenCell(v, cls = "") {
+    return h("td", { class: `num ${cls}`, title: yenFull(v) }, yenShort(v));
+  }
+  function rateCell(r) {
+    if (r.execState) return h("td", { class: "rate muted" }, r.execState);
+    return h("td", { class: "rate" }, raw(bar(r.execRate)), h("span", {}, pct(r.execRate)));
+  }
+  function badges(r, meta) {
+    const td = h("td", { class: "badges" });
+    for (const s of meta.signals) {
+      if (r.signalCodes.includes(s.code)) td.appendChild(h("span", { class: "badge", title: s.description }, s.label));
+    }
+    return td;
+  }
+  function paged(rows, renderRow, shown, onMore) {
+    const tbody = h("tbody");
+    for (const r of rows.slice(0, shown)) tbody.appendChild(renderRow(r));
+    const more = rows.length > shown ? h("p", { class: "more" }, h("button", { type: "button", onclick: onMore }, `\u3055\u3089\u306B\u8868\u793A\uFF08\u6B8B\u308A ${rows.length - shown} \u4EF6\uFF09`)) : null;
+    return { tbody, more };
+  }
+  function select(name, options, value, onchange) {
+    const sel = h("select", { name, onchange: (e) => onchange(e.target.value) });
+    for (const o of options) {
+      const opt = h("option", { value: o.value }, o.label);
+      if (o.value === value) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    return sel;
+  }
+  function ministryOptions(rows, meta) {
+    const counts = /* @__PURE__ */ new Map();
+    for (const r of rows) counts.set(r.ministry, (counts.get(r.ministry) ?? 0) + 1);
+    return [{ value: "", label: "\u5E9C\u7701\u5E81: \u3059\u3079\u3066" }, ...meta.ministries.map((m) => ({ value: m, label: `${m} (${counts.get(m) ?? 0})` }))];
+  }
+  function sortOptions(extra = []) {
+    return [
+      { value: "id:asc", label: "ID \u9806" },
+      { value: "initial:desc", label: "\u5F53\u521D\u4E88\u7B97 \u591A\u3044\u9806" },
+      { value: "current:desc", label: "\u73FE\u984D \u591A\u3044\u9806" },
+      { value: "executed:desc", label: "\u57F7\u884C\u984D \u591A\u3044\u9806" },
+      { value: "execRate:asc", label: "\u57F7\u884C\u7387 \u4F4E\u3044\u9806" },
+      { value: "execRate:desc", label: "\u57F7\u884C\u7387 \u9AD8\u3044\u9806" },
+      { value: "unused:desc", label: "\u4E0D\u7528\u76F8\u5F53\u984D \u591A\u3044\u9806" },
+      { value: "request:desc", label: "\u6982\u7B97\u8981\u6C42 \u591A\u3044\u9806" },
+      { value: "nextRequest:desc", label: "\u6B21\u5E74\u5EA6\u8981\u6C42 \u591A\u3044\u9806" },
+      ...extra
+    ];
+  }
+  function summaryLine(n2, total) {
+    return h("p", { class: "count muted" }, `${n2.toLocaleString("ja-JP")} / ${total.toLocaleString("ja-JP")} \u4E8B\u696D`);
+  }
+
+  // src/views/gaps.ts
+  function thresholdText(code, meta) {
+    const t = meta.thresholds;
+    switch (code) {
+      case "request_gap":
+        return `\u5F53\u521D/\u8981\u6C42 < ${t.RequestGapRatio}`;
+      case "low_execution":
+        return `\u57F7\u884C\u7387 < ${t.LowExecRate}`;
+      case "large_unused":
+        return `\u4E0D\u7528\u76F8\u5F53\u984D \u2265 ${yenFull(t.LargeUnusedYen)} \u304B\u3064 \u4E0D\u7528/\u73FE\u984D \u2265 ${t.LargeUnusedRatio}`;
+      case "outcome_shortfall":
+        return `\u9054\u6210\u7387\u306E\u6700\u5C0F < ${t.OutcomeShortfall}%`;
+      case "outcome_overshoot":
+        return `\u9054\u6210\u7387\u306E\u6700\u5927 > ${t.OutcomeOvershoot}%`;
+      default:
+        return "";
+    }
+  }
+  function renderGaps(root, rows, meta, params, update) {
+    const selected = (params.get("sig") ?? "").split(",").filter(Boolean);
+    const mode = params.get("mode") === "and" ? "and" : "or";
+    const m = params.get("m") ?? "";
+    const sort = parseSort(params.get("sort"), "signals", "desc");
+    const shown = Number(params.get("n") ?? PAGE) || PAGE;
+    const set = (k, v) => {
+      const p = new URLSearchParams(params);
+      if (v) p.set(k, v);
+      else p.delete(k);
+      p.delete("n");
+      update(p);
+    };
+    const scoped = applyFilter(rows, { ministry: m });
+    const counts = countSignals(scoped, meta.signals.map((s) => s.code));
+    const active = selected.length ? selected : meta.signals.map((s) => s.code);
+    const filtered = sortRows(applyFilter(scoped, { signals: active, mode }), sort.key, sort.dir);
+    const tiles = h("div", { class: "tiles" });
+    for (const s of meta.signals) {
+      const on = selected.includes(s.code);
+      tiles.appendChild(
+        h(
+          "label",
+          { class: `tile ${on ? "on" : ""}`, title: s.description },
+          h("input", {
+            type: "checkbox",
+            checked: on,
+            onchange: () => {
+              const next = on ? selected.filter((c) => c !== s.code) : [...selected, s.code];
+              set("sig", next.join(","));
+            }
+          }),
+          h("span", { class: "label" }, s.label),
+          h("span", { class: "n" }, String(counts.get(s.code) ?? 0)),
+          h("span", { class: "th muted" }, thresholdText(s.code, meta))
+        )
+      );
+    }
+    const controls = h(
+      "div",
+      { class: "controls" },
+      select("m", ministryOptions(rows, meta), m, (v) => set("m", v)),
+      select(
+        "mode",
+        [
+          { value: "or", label: "\u3044\u305A\u308C\u304B\u306B\u8A72\u5F53\uFF08OR\uFF09" },
+          { value: "and", label: "\u3059\u3079\u3066\u306B\u8A72\u5F53\uFF08AND\uFF09" }
+        ],
+        mode,
+        (v) => set("mode", v)
+      ),
+      select("sort", sortOptions([{ value: "signals:desc", label: "\u5146\u5019\u306E\u6570 \u591A\u3044\u9806" }]), `${sort.key}:${sort.dir}`, (v) => set("sort", v)),
+      selected.length ? h("button", { type: "button", onclick: () => set("sig", "") }, "\u9078\u629E\u3092\u89E3\u9664") : null
+    );
+    const { tbody, more } = paged(
+      filtered,
+      (r) => h(
+        "tr",
+        {},
+        h("td", { class: "id" }, r.id),
+        nameCell(r),
+        h("td", {}, r.ministry),
+        badges(r, meta),
+        yenCell(r.request),
+        yenCell(r.initial),
+        yenCell(r.current),
+        yenCell(r.executed),
+        rateCell(r),
+        yenCell(r.unused, r.unusedState ? "muted" : ""),
+        h("td", {}, r.reflection)
+      ),
+      shown,
+      () => {
+        const p = new URLSearchParams(params);
+        p.set("n", String(shown + PAGE));
+        update(p);
+      }
+    );
+    root.replaceChildren(
+      h("h2", {}, "\u30EB\u30FC\u30D7\u306E\u65AD\u7D76\u3092\u63A2\u3059", h("small", { class: "muted" }, " \u8981\u6C42\u2192\u6210\u7ACB\u2192\u57F7\u884C\u2192\u6C7A\u7B97\u2192\u8A55\u4FA1\u2192\u53CD\u6620\u306E\u3069\u3053\u304B\u3067\u6574\u5408\u3057\u306A\u3044\u4E8B\u696D")),
+      h("p", { class: "muted" }, "\u5224\u5B9A\u306F\u751F\u6210\u6642\u306B\u884C\u3063\u3066\u3044\u307E\u3059\u3002\u95BE\u5024\u3092\u5909\u3048\u308B\u306B\u306F zailoop build \u306E\u5F15\u6570\u3092\u4F7F\u3063\u3066\u304F\u3060\u3055\u3044\u3002"),
+      tiles,
+      controls,
+      summaryLine(filtered.length, scoped.length),
+      h(
+        "table",
+        { class: "rows" },
+        h(
+          "thead",
+          {},
+          h(
+            "tr",
+            {},
+            h("th", {}, "ID"),
+            h("th", {}, "\u4E8B\u696D\u540D"),
+            h("th", {}, "\u5E9C\u7701\u5E81"),
+            h("th", {}, "\u5146\u5019"),
+            h("th", { class: "num" }, "\u2460 \u8981\u6C42"),
+            h("th", { class: "num" }, "\u2461 \u5F53\u521D"),
+            h("th", { class: "num" }, "\u2461 \u73FE\u984D"),
+            h("th", { class: "num" }, "\u2462 \u57F7\u884C"),
+            h("th", {}, "\u2462 \u57F7\u884C\u7387"),
+            h("th", { class: "num" }, "\u2463 \u4E0D\u7528\u76F8\u5F53"),
+            h("th", {}, "\u2465 \u53CD\u6620")
+          )
+        ),
+        tbody
+      ),
+      ...more ? [more] : []
+    );
+  }
+
+  // src/views/list.ts
+  function renderList(root, rows, meta, params, update) {
+    const q = params.get("q") ?? "";
+    const m = params.get("m") ?? "";
+    const c = params.get("c") ?? "";
+    const sort = parseSort(params.get("sort"));
+    const shown = Number(params.get("n") ?? PAGE) || PAGE;
+    const set = (k, v) => {
+      const p = new URLSearchParams(params);
+      if (v) p.set(k, v);
+      else p.delete(k);
+      p.delete("n");
+      update(p);
+    };
+    const filtered = sortRows(applyFilter(rows, { q, ministry: m, category: c }), sort.key, sort.dir);
+    const n2 = meta.actualYear;
+    const controls = h(
+      "div",
+      { class: "controls" },
+      h("input", {
+        type: "search",
+        placeholder: "\u4E8B\u696D\u540D \u307E\u305F\u306F \u4E88\u7B97\u4E8B\u696DID",
+        value: q,
+        oninput: (e) => set("q", e.target.value)
+      }),
+      select("m", ministryOptions(rows, meta), m, (v) => set("m", v)),
+      select("c", [{ value: "", label: "\u4E8B\u696D\u533A\u5206: \u3059\u3079\u3066" }, ...meta.categories.map((x) => ({ value: x, label: x }))], c, (v) => set("c", v)),
+      select("sort", sortOptions(), `${sort.key}:${sort.dir}`, (v) => set("sort", v))
+    );
+    const { tbody, more } = paged(
+      filtered,
+      (r) => h(
+        "tr",
+        {},
+        h("td", { class: "id" }, r.id),
+        nameCell(r),
+        h("td", {}, r.ministry),
+        h("td", { class: "muted" }, r.category),
+        yenCell(r.request),
+        yenCell(r.initial),
+        yenCell(r.current),
+        yenCell(r.executed),
+        rateCell(r),
+        yenCell(r.unused, r.unusedState ? "muted" : ""),
+        h("td", {}, r.reflection),
+        badges(r, meta)
+      ),
+      shown,
+      () => {
+        const p = new URLSearchParams(params);
+        p.set("n", String(shown + PAGE));
+        update(p);
+      }
+    );
+    root.replaceChildren(
+      h("h2", {}, "\u4E00\u89A7", h("small", { class: "muted" }, ` FY${n2} \u3092\u8EF8\u306B\u3057\u305F 6 \u6BB5\u968E\u306E\u91D1\u984D`)),
+      controls,
+      summaryLine(filtered.length, rows.length),
+      h(
+        "table",
+        { class: "rows" },
+        h(
+          "thead",
+          {},
+          h(
+            "tr",
+            {},
+            h("th", {}, "ID"),
+            h("th", {}, "\u4E8B\u696D\u540D"),
+            h("th", {}, "\u5E9C\u7701\u5E81"),
+            h("th", {}, "\u533A\u5206"),
+            h("th", { class: "num" }, `\u2460 FY${n2} \u8981\u6C42`),
+            h("th", { class: "num" }, `\u2461 \u5F53\u521D`),
+            h("th", { class: "num" }, `\u2461 \u73FE\u984D`),
+            h("th", { class: "num" }, `\u2462 \u57F7\u884C`),
+            h("th", {}, "\u2462 \u57F7\u884C\u7387"),
+            h("th", { class: "num" }, "\u2463 \u4E0D\u7528\u76F8\u5F53"),
+            h("th", {}, "\u2465 \u53CD\u6620"),
+            h("th", {}, "\u5146\u5019")
+          )
+        ),
+        tbody
+      ),
+      ...more ? [more] : []
+    );
+  }
+
+  // src/views/outcomes.ts
+  function renderOutcomes(root, rows, meta, params, update) {
+    const m = params.get("m") ?? "";
+    const tab = params.get("tab") || "short";
+    const shown = Number(params.get("n") ?? PAGE) || PAGE;
+    const set = (k, v) => {
+      const p = new URLSearchParams(params);
+      if (v) p.set(k, v);
+      else p.delete(k);
+      p.delete("n");
+      update(p);
+    };
+    const scoped = applyFilter(rows, { ministry: m });
+    const rated = withRates(scoped);
+    const bins = histogram(rated);
+    const totalRates = bins.reduce((a, b) => a + b.count, 0);
+    const t = meta.thresholds;
+    const tabs = [
+      { key: "short", label: `\u672A\u9054\uFF08\u6700\u5C0F\u9054\u6210\u7387 < ${t.OutcomeShortfall}%\uFF09`, code: "outcome_shortfall", sort: parseSort(null, "minRate", "asc") },
+      { key: "over", label: `\u8D85\u904E\uFF08\u6700\u5927\u9054\u6210\u7387 > ${t.OutcomeOvershoot}%\uFF09`, code: "outcome_overshoot", sort: parseSort(null, "maxRate", "desc") },
+      { key: "none", label: "\u5B9F\u7E3E\u306A\u3057\uFF08\u5B9A\u91CF\u7684\u30A2\u30A6\u30C8\u30AB\u30E0\u304C\u3042\u308B\u306E\u306B\u9054\u6210\u7387\u306A\u3057\uFF09", code: "no_outcome_actual", sort: parseSort(null, "initial", "desc") }
+    ];
+    const cur = tabs.find((x) => x.key === tab) ?? tabs[0];
+    const list = sortRows(applyFilter(scoped, { signals: [cur.code] }), cur.sort.key, cur.sort.dir);
+    const tabBar = h("div", { class: "tabs" });
+    for (const x of tabs) {
+      const n2 = applyFilter(scoped, { signals: [x.code] }).length;
+      tabBar.appendChild(h("button", { type: "button", class: x.key === cur.key ? "on" : "", onclick: () => set("tab", x.key) }, `${x.label} `, h("span", { class: "n" }, String(n2))));
+    }
+    const { tbody, more } = paged(
+      list,
+      (r) => {
+        const mn = r.rates.length ? Math.min(...r.rates) : null;
+        const mx = r.rates.length ? Math.max(...r.rates) : null;
+        return h(
+          "tr",
+          {},
+          h("td", { class: "id" }, r.id),
+          nameCell(r),
+          h("td", {}, r.ministry),
+          h("td", { class: "num" }, String(r.outcomes)),
+          h("td", { class: "num" }, ratePct(mn)),
+          h("td", { class: "num" }, ratePct(mx)),
+          h("td", { class: "rates muted" }, r.rates.map((v) => ratePct(v)).join(" / ")),
+          yenCell(r.initial),
+          h("td", {}, r.reflection)
+        );
+      },
+      shown,
+      () => {
+        const p = new URLSearchParams(params);
+        p.set("n", String(shown + PAGE));
+        update(p);
+      }
+    );
+    root.replaceChildren(
+      h("h2", {}, "\u6210\u679C\u6307\u6A19\u306E\u9054\u6210\u72B6\u6CC1", h("small", { class: "muted" }, ` FY${meta.actualYear} \u306E\u5B9A\u91CF\u7684\u30A2\u30A6\u30C8\u30AB\u30E0\u9054\u6210\u7387`)),
+      h("div", { class: "controls" }, select("m", ministryOptions(rows, meta), m, (v) => set("m", v))),
+      h("p", { class: "muted" }, `\u9054\u6210\u7387\u3092\u3082\u3064\u4E8B\u696D ${rated.length.toLocaleString("ja-JP")} / ${scoped.length.toLocaleString("ja-JP")}\u3001\u6307\u6A19 ${totalRates.toLocaleString("ja-JP")} \u4EF6`),
+      h("div", { class: "histwrap" }, raw(histogramSvg(bins))),
+      tabBar,
+      summaryLine(list.length, scoped.length),
+      h(
+        "table",
+        { class: "rows" },
+        h(
+          "thead",
+          {},
+          h(
+            "tr",
+            {},
+            h("th", {}, "ID"),
+            h("th", {}, "\u4E8B\u696D\u540D"),
+            h("th", {}, "\u5E9C\u7701\u5E81"),
+            h("th", { class: "num" }, "\u6307\u6A19\u6570"),
+            h("th", { class: "num" }, "\u6700\u5C0F"),
+            h("th", { class: "num" }, "\u6700\u5927"),
+            h("th", {}, "\u9054\u6210\u7387"),
+            h("th", { class: "num" }, "\u2461 \u5F53\u521D"),
+            h("th", {}, "\u2465 \u53CD\u6620")
+          )
+        ),
+        tbody
+      ),
+      ...more ? [more] : []
+    );
+  }
+
+  // src/main.ts
+  function main() {
+    const root = document.getElementById("app");
+    const dataEl = document.getElementById("zailoop-data");
+    if (!root || !dataEl) return;
+    let payload;
+    try {
+      payload = JSON.parse(dataEl.textContent ?? "");
+    } catch (e) {
+      root.replaceChildren(h("p", { class: "error" }, `\u30C7\u30FC\u30BF\u3092\u8AAD\u3081\u307E\u305B\u3093: ${String(e)}`));
+      return;
+    }
+    const { meta, rows } = decode(payload);
+    const render = () => {
+      const { view, params } = parseHash(location.hash);
+      const update = (p) => {
+        const next = buildHash(view, p);
+        if (next !== location.hash) history.replaceState(null, "", next);
+        render();
+      };
+      for (const a of document.querySelectorAll("#nav a")) {
+        a.classList.toggle("on", a.getAttribute("href") === `#${view}`);
+      }
+      switch (view) {
+        case "gaps":
+          renderGaps(root, rows, meta, params, update);
+          break;
+        case "outcomes":
+          renderOutcomes(root, rows, meta, params, update);
+          break;
+        default:
+          renderList(root, rows, meta, params, update);
+      }
+      restoreFocus(root);
+    };
+    let focusedName = null;
+    let focusedPos = 0;
+    root.addEventListener("input", (e) => {
+      const t = e.target;
+      if (t.type === "search") {
+        focusedName = "search";
+        focusedPos = t.selectionStart ?? t.value.length;
+      }
+    });
+    function restoreFocus(el) {
+      if (focusedName !== "search") return;
+      const input = el.querySelector('input[type="search"]');
+      if (input) {
+        input.focus();
+        input.setSelectionRange(focusedPos, focusedPos);
+      }
+      focusedName = null;
+    }
+    window.addEventListener("hashchange", render);
+    render();
+  }
+  main();
+})();

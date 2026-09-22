@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>zailoop — 予算事業ライフサイクル {{.Meta.SheetYear}}年度</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body class="index">
+<header>
+  <h1>zailoop <small class="muted">予算事業の「要求→成立→執行→決算→評価→翌年度反映」を事業単位で見る</small></h1>
+  <p class="axis">{{.Meta.SheetYear}}年度シート {{.Meta.Count}} 事業 ／ 軸: FY{{.Meta.ActualYear}} 執行実績</p>
+  <nav id="nav"><a href="#list">一覧</a> <a href="#gaps">ループの断絶</a> <a href="#outcomes">成果指標</a> <a href="list.html">JS なし一覧</a></nav>
+</header>
+<noscript><p>JavaScript が無効です。事業一覧は <a href="list.html">list.html</a> を参照してください。</p></noscript>
+<main id="app"></main>
+<footer>
+  <p>{{.Attribution}}</p>
+  <p class="muted">生成: {{.Meta.Generated}} ／ 数値は円。「FY」は予算年度。</p>
+</footer>
+<script id="zailoop-data" type="application/json">{{.JSON}}</script>
+<script src="assets/app.js"></script>
+</body>
+</html>

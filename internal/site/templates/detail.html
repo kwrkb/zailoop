@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{.LC.Project.ID}} {{.LC.Project.Name}} | zailoop</title>
+<link rel="stylesheet" href="{{.Root}}assets/style.css">
+</head>
+<body class="detail">
+<nav class="top"><a href="{{.Root}}index.html">← 一覧へ</a> <span class="muted">zailoop</span></nav>
+<header>
+  <h1><span class="id">{{.LC.Project.ID}}</span> {{.LC.Project.Name}}</h1>
+  <p class="org">{{.LC.Project.Ministry}}{{with .LC.Project.Bureau}} / {{.}}{{end}}{{with .LC.Project.Division}} / {{.}}{{end}}</p>
+  <p class="meta">
+    {{with .LC.Project.Category}}<span>{{.}}</span>{{end}}
+    {{with .LC.Project.StartYear}}<span>開始 {{.}}年度</span>{{end}}
+    {{with .LC.Project.EndYear}}<span>終了予定 {{.}}年度</span>{{end}}
+    {{with .LC.Project.MajorExpense}}<span>主要経費: {{join . "、"}}</span>{{end}}
+    {{with .LC.Project.Methods}}<span>実施方法: {{join . "、"}}</span>{{end}}
+  </p>
+  <p class="axis">{{.LC.SheetYear}}年度シート ／ 軸: FY{{.LC.ActualYear}} 執行実績（確定している最新の予算年度）</p>
+  {{if .Signals}}<p class="signals">{{range .Signals}}<span class="badge" title="{{.Description}}">{{.Label}}</span>{{end}}</p>{{end}}
+  {{with .LC.Project.Purpose}}<details><summary>事業の目的</summary><p>{{.}}</p></details>{{end}}
+  {{with .LC.Project.Summary}}<details><summary>事業の概要</summary><p>{{.}}</p></details>{{end}}
+</header>
+
+<section class="loop">
+  <h2>ライフサイクル（金額）</h2>
+  <div class="bars">
+  {{range .StageBars}}
+    <div class="bar {{.Class}}">
+      <div class="label">{{.Label}}</div>
+      <svg viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="1" height="8" width="{{pct .Width}}"></rect></svg>
+      <div class="value">{{.Text}}</div>
+    </div>
+  {{end}}
+  </div>
+</section>
+
+{{if .YearBars}}
+<section class="years">
+  <h2>予算年度ごとの推移</h2>
+  <table class="yeartable">
+    <thead><tr><th>予算年度</th><th>当初予算</th><th>歳出予算現額</th><th>執行額</th></tr></thead>
+    <tbody>
+    {{range .YearBars}}
+      <tr><th>{{.Year}}</th>
+        <td><svg viewBox="0 0 100 10" preserveAspectRatio="none"><rect x="0" y="1" height="8" width="{{pct .Initial.Width}}"></rect></svg><span>{{.Initial.Text}}</span></td>
+        <td><svg viewBox="0 0 100 10" preserveAspectRatio="none"><rect x="0" y="1" height="8" width="{{pct .Current.Width}}"></rect></svg><span>{{.Current.Text}}</span></td>
+        <td><svg viewBox="0 0 100 10" preserveAspectRatio="none"><rect x="0" y="1" height="8" width="{{pct .Executed.Width}}"></rect></svg><span>{{.Executed.Text}}</span></td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+
+{{$n := .LC.ActualYear}}
+<section class="stage"><h2>① 要求 <small>FY{{$n}} 概算要求</small></h2>
+  <dl><dt>要求額</dt><dd>{{if isOK .LC.Request.State}}{{yen .LC.Request.Amount}}{{else}}{{state .LC.Request.State}}{{end}}</dd></dl>
+</section>
+
+<section class="stage"><h2>② 成立 <small>FY{{$n}} 予算</small></h2>
+  {{with .LC.Enacted}}{{if isOK .State}}
+  <dl>
+    <dt>当初予算</dt><dd>{{yen .Initial}}</dd>
+    <dt>補正予算</dt><dd>{{yen .Supplementary}}</dd>
+    <dt>前年度繰越</dt><dd>{{yen .CarriedIn}}</dd>
+    <dt>予備費等</dt><dd>{{yen .Reserve}}</dd>
+    <dt>歳出予算現額</dt><dd>{{yen .Current}}</dd>
+    {{if .Items}}<dt>内訳（予算種別）</dt><dd>{{range $i, $it := .Items}}{{if $i}}、{{end}}{{$it.Kind}} {{yen $it.Amount}}（{{$it.Count}}件）{{end}}</dd>{{end}}
+  </dl>
+  {{else}}<p class="muted">{{state .State}}</p>{{end}}{{end}}
+</section>
+
+<section class="stage"><h2>③ 執行 <small>FY{{$n}} 執行実績</small></h2>
+  {{with .LC.Execution}}
+  <dl>
+    {{if isOK .State}}<dt>執行額</dt><dd>{{yen .Executed}}</dd><dt>執行率</dt><dd>{{ratio .Rate}}</dd>
+    {{else if eq (state .State) "算出対象外"}}<dt>執行額</dt><dd>{{yen .Executed}} <span class="muted">（歳出予算現額が 0 以下。予算は別事業に計上の可能性）</span></dd><dt>執行率</dt><dd>—（算出対象外）</dd>
+    {{else}}<dt>執行</dt><dd>{{state .State}}</dd>{{end}}
+  </dl>{{end}}
+</section>
+
+<section class="stage"><h2>④ 決算 <small>FY{{$n}} 繰越・不用（不用相当額は 現額−執行−翌年度繰越 の導出値）</small></h2>
+  {{with .LC.Settlement}}
+  <dl>
+    <dt>翌年度繰越</dt><dd>{{yen .CarriedOut}}</dd>
+    <dt>不用相当額</dt><dd>{{if isOK .UnusedState}}{{yen .Unused}}{{else if eq (state .UnusedState) "要確認"}}算出不能／差額 {{yenSigned .Diff}}（要確認）{{else if eq (state .UnusedState) "算出対象外"}}—（算出対象外）{{else}}{{state .UnusedState}}{{end}}</dd>
+  </dl>{{end}}
+</section>
+
+<section class="stage"><h2>⑤ 評価 <small>{{.LC.SheetYear}}年度シートの点検・評価</small></h2>
+  {{with .LC.Evaluation}}
+  <dl>
+    <dt>所管部局の点検</dt><dd>{{or .SelfCheck "（記載なし）"}}</dd>
+    <dt>改善の方向性</dt><dd>{{or .Improvement "（記載なし）"}}</dd>
+    <dt>外部有識者点検</dt><dd>{{or .ExternalTarget "（記載なし）"}}{{with .ExternalYear}}（最終実施 {{.}}年度）{{end}}{{with .ExternalOpinion}}<br><span class="sub">所見: {{.}}</span>{{end}}</dd>
+    <dt>推進チーム所見</dt><dd>{{or .TeamOpinion "（記載なし）"}}{{with .TeamOpinionDetail}}<br><span class="sub">{{.}}</span>{{end}}</dd>
+  </dl>
+  {{if .Outcomes}}
+  <h3>成果指標（FY{{$n}}）</h3>
+  <table class="outcomes">
+    <thead><tr><th>種別</th><th>指標</th><th>目標</th><th>実績</th><th>達成率</th></tr></thead>
+    <tbody>{{range .Outcomes}}
+      <tr><td>{{.Kind}}{{term .Term}}</td><td>{{metric .}}</td><td>{{or .Target "—"}}</td><td>{{or .Actual "—"}}</td>
+        <td class="rate">{{if .Rate}}<svg viewBox="0 0 100 10" preserveAspectRatio="none"><rect x="0" y="1" height="8" width="{{pct (ratePct .Rate)}}"></rect></svg>{{end}}<span>{{or .Rate "—"}}</span></td></tr>
+    {{end}}</tbody>
+  </table>
+  {{end}}{{end}}
+</section>
+
+<section class="stage"><h2>⑥ 翌年度反映 <small>概算要求への反映と FY{{.LC.Reflection.RequestYear}} 要求</small></h2>
+  {{with .LC.Reflection}}
+  <dl>
+    <dt>反映状況</dt><dd>{{or .Status "（記載なし）"}}{{with .Detail}}<br><span class="sub">{{.}}</span>{{end}}</dd>
+    {{if .ReflectedGeneral.Valid}}<dt>反映額（一般会計）</dt><dd>{{yen .ReflectedGeneral}}</dd>{{end}}
+    {{range .ReflectedSpecial}}<dt>反映額（特別会計）</dt><dd>{{.Account}} {{.Subaccount}} {{yen .Amount}}</dd>{{end}}
+    <dt>FY{{inc $n}} 当初予算（参考）</dt><dd>{{if isOK .NextInitialState}}{{yen .NextInitial}}{{else}}{{state .NextInitialState}}{{end}}</dd>
+    <dt>FY{{.RequestYear}} 概算要求</dt><dd>{{if isOK .State}}{{yen .Amount}}{{else}}{{state .State}}{{end}}</dd>
+    {{if and .Demand.Valid (ne .Demand.Value 0)}}<dt>うち要望額</dt><dd>{{yen .Demand}}</dd>{{end}}
+    {{with .ChangeReason}}<dt>主な増減理由</dt><dd>{{.}}</dd>{{end}}
+  </dl>{{end}}
+</section>
+
+{{if .LC.BlockCount}}
+<section class="stage"><h2>支出先ブロック <small>FY{{$n}} 実績、金額上位 {{len .LC.Payees}} / {{.LC.BlockCount}} ブロック（ブロック間の資金移動があるため合計は事業総額ではない）</small></h2>
+  <table class="blocks"><tbody>
+  {{range .LC.Payees}}<tr><th>{{.Number}}</th><td>{{.Name}}{{with .Role}}<br><span class="sub">{{.}}</span>{{end}}</td><td class="num">{{yen .Total}}</td></tr>{{end}}
+  </tbody></table>
+</section>
+{{end}}
+
+{{if .LC.Notes}}
+<section class="stage notes"><h2>注意</h2><ul>{{range .LC.Notes}}<li>{{.}}</li>{{end}}</ul></section>
+{{end}}
+
+<footer>
+  <p>{{.Attribution}}</p>
+  <p class="muted">生成: {{.Generated}} ／ 数値は円。「FY」は予算年度。</p>
+</footer>
+</body>
+</html>
