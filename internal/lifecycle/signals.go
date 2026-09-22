@@ -3,6 +3,8 @@ package lifecycle
 import (
 	"strconv"
 	"strings"
+
+	"github.com/kwrkb/zailoop/internal/rs"
 )
 
 // Thresholds は「ループの断絶」判定の閾値。ゼロ値のフィールドは DefaultThresholds の値で補う。
@@ -144,13 +146,8 @@ func Detect(lc *Lifecycle, th Thresholds) Signal {
 	if lc.Settlement.UnusedState == StateNeedsReview {
 		s |= SignalNegativeUnused
 	}
-	rates, outcomes := OutcomeRates(lc)
-	if len(rates) > 0 {
-		mn, mx := rates[0], rates[0]
-		for _, r := range rates[1:] {
-			mn = min(mn, r)
-			mx = max(mx, r)
-		}
+	mn, mx, ok, outcomes := outcomeRange(lc)
+	if ok {
 		if mn < th.OutcomeShortfall {
 			s |= SignalOutcomeShortfall
 		}
@@ -179,6 +176,20 @@ func OutcomeRates(lc *Lifecycle) (rates []float64, outcomes int) {
 	return rates, outcomes
 }
 
+// outcomeRange は確定年度のアウトカム達成率の最小・最大。ok は達成率が 1 つ以上読めたとき true。
+func outcomeRange(lc *Lifecycle) (mn, mx float64, ok bool, outcomes int) {
+	rates, outcomes := OutcomeRates(lc)
+	if len(rates) == 0 {
+		return 0, 0, false, outcomes
+	}
+	mn, mx = rates[0], rates[0]
+	for _, r := range rates[1:] {
+		mn = min(mn, r)
+		mx = max(mx, r)
+	}
+	return mn, mx, true, outcomes
+}
+
 // ParseRate は "177.3" や "177.3%"、"1,234.5" を % の数値として読む。読めなければ false。
 func ParseRate(s string) (float64, bool) {
 	s = strings.TrimSpace(s)
@@ -193,4 +204,76 @@ func ParseRate(s string) (float64, bool) {
 		return 0, false
 	}
 	return v, true
+}
+
+// Evidence は立っている兆候 1 つの根拠（判定に使った観測値と閾値）。文言にするのは site の責務。
+// 使うフィールドは兆候ごとに決まる（Explain のコメント参照）。
+type Evidence struct {
+	Signal          Signal
+	Observed        float64 // 比率（0〜1）または達成率（%）
+	Threshold       float64 // Observed と比べた閾値
+	Amount          rs.Yen  // 観測した金額
+	ThresholdAmount int64   // Amount と比べた閾値（大きな不用）
+	Base            rs.Yen  // 比較元の金額
+	Text            string  // 反映状況など文字列の根拠
+}
+
+// Explain は s に立っている兆候について、Detect / DetectLoop が見た値を返す。条件は再判定しない。
+// 兆候ごとの中身:
+//   - request_gap: Observed=当初/要求, Threshold, Amount=当初, Base=要求
+//   - low_execution: Observed=執行率, Threshold
+//   - large_unused: Amount=不用相当額, ThresholdAmount, Observed=不用/現額, Threshold
+//   - cut: Text=反映状況
+//   - execution_without_budget: Amount=執行額, Base=現額
+//   - negative_unused: Amount=差額（負）
+//   - outcome_shortfall / outcome_overshoot: Observed=達成率の最小 / 最大（%）, Threshold
+//   - no_outcome_actual: なし
+//   - reflection_contradicted: Text=前年シートの反映状況, Base=前年当初, Amount=当年当初
+//   - request_zeroed: Base=前年シートの概算要求, Amount=当年当初
+func Explain(tl *Timeline, s Signal, th Thresholds) []Evidence {
+	th = th.WithDefaults()
+	lc := tl.Latest
+	var prev Loop
+	if len(tl.Loops) >= 2 {
+		prev = tl.Loops[len(tl.Loops)-2] // SummarizeTimeline と同じループ
+	}
+	var out []Evidence
+	for _, d := range SignalInfo {
+		if !s.Has(d.Signal) {
+			continue
+		}
+		ev := Evidence{Signal: d.Signal}
+		switch d.Signal {
+		case SignalRequestGap:
+			ev.Amount, ev.Base, ev.Threshold = lc.Enacted.Initial, lc.Request.Amount, th.RequestGapRatio
+			if lc.Request.Amount.Value > 0 {
+				ev.Observed = float64(lc.Enacted.Initial.Value) / float64(lc.Request.Amount.Value)
+			}
+		case SignalLowExecution:
+			ev.Observed, ev.Threshold = lc.Execution.Rate.Value, th.LowExecRate
+		case SignalLargeUnused:
+			ev.Amount, ev.ThresholdAmount, ev.Threshold = lc.Settlement.Unused, th.LargeUnusedYen, th.LargeUnusedRatio
+			if lc.Enacted.Current.Value > 0 {
+				ev.Observed = float64(lc.Settlement.Unused.Value) / float64(lc.Enacted.Current.Value)
+			}
+		case SignalCut:
+			ev.Text = lc.Reflection.Status
+		case SignalExecutionWithoutBudget:
+			ev.Amount, ev.Base = lc.Execution.Executed, lc.Enacted.Current
+		case SignalNegativeUnused:
+			ev.Amount = rs.Yen{Value: lc.Settlement.Diff, Valid: true}
+		case SignalOutcomeShortfall:
+			ev.Observed, _, _, _ = outcomeRange(lc)
+			ev.Threshold = th.OutcomeShortfall
+		case SignalOutcomeOvershoot:
+			_, ev.Observed, _, _ = outcomeRange(lc)
+			ev.Threshold = th.OutcomeOvershoot
+		case SignalReflectionContradicted:
+			ev.Text, ev.Base, ev.Amount = prev.Reflection, prev.Initial, prev.NextInitial
+		case SignalRequestZeroed:
+			ev.Base, ev.Amount = prev.NextRequest, prev.NextInitial
+		}
+		out = append(out, ev)
+	}
+	return out
 }

@@ -5,6 +5,8 @@ package render
 import (
 	"fmt"
 	"io"
+	"math"
+	"strconv"
 	"strings"
 
 	"github.com/kwrkb/zailoop/internal/lifecycle"
@@ -278,4 +280,44 @@ func MetricLabel(o lifecycle.OutcomeLine) string {
 		s += "[" + o.Unit + "]"
 	}
 	return s
+}
+
+// YenShort は円を兆・億・万で短く表す（web/src/format.ts の yenShort と同じ規則）。
+// 3 桁以上は整数に丸めて 3 桁区切り、それ未満は小数 1 桁（末尾の .0 は落とす）。空欄は「—」。
+func YenShort(v rs.Yen) string {
+	if !v.Valid {
+		return "—"
+	}
+	return YenShortValue(v.Value)
+}
+
+// YenShortValue は int64 の円を YenShort と同じ規則で表す。
+func YenShortValue(v int64) string {
+	neg := v < 0
+	a := v
+	if neg {
+		a = -v
+	}
+	var s string
+	switch {
+	case a >= 1e12:
+		s = shortNum(float64(a)/1e12) + " 兆円"
+	case a >= 1e8:
+		s = shortNum(float64(a)/1e8) + " 億円"
+	case a >= 1e4:
+		s = shortNum(float64(a)/1e4) + " 万円"
+	default:
+		s = fmt.Sprint(a) + " 円"
+	}
+	if neg {
+		return "-" + s
+	}
+	return s
+}
+
+func shortNum(x float64) string {
+	if x >= 100 {
+		return strings.TrimSuffix(YenValue(int64(math.Floor(x+0.5))), " 円")
+	}
+	return strconv.FormatFloat(math.Floor(x*10+0.5)/10, 'f', -1, 64)
 }

@@ -14,7 +14,7 @@ func TestDetailEscapesHTML(t *testing.T) {
 		Evaluation: rs.Evaluation{SelfCheck: "<b>bold</b>"}}
 	tl := lifecycle.Track([]*rs.Sheet{s}, lifecycle.Thresholds{})
 	var buf bytes.Buffer
-	if err := writeDetail(&buf, tl, lifecycle.SummarizeTimeline(tl, lifecycle.Thresholds{}), "now"); err != nil {
+	if err := writeDetail(&buf, tl, lifecycle.SummarizeTimeline(tl, lifecycle.Thresholds{}), lifecycle.Thresholds{}, "now"); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()

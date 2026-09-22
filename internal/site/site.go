@@ -106,7 +106,7 @@ func BuildMulti(src MultiSource, out string, opt Options) (Stats, error) {
 		}
 		sm := lifecycle.SummarizeTimeline(tl, opt.Thresholds)
 		n, err := writeFile(filepath.Join(out, "p", tl.ID+".html"), func(w io.Writer) error {
-			return writeDetail(w, tl, sm, generated)
+			return writeDetail(w, tl, sm, opt.Thresholds, generated)
 		})
 		if err != nil {
 			return err

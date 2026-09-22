@@ -38,3 +38,32 @@ func TestTextContainsStagesAndAttribution(t *testing.T) {
 		}
 	}
 }
+
+// web/test/format.test.ts の yenShort と同じケース。
+func TestYenShort(t *testing.T) {
+	for _, c := range []struct {
+		in   rs.Yen
+		want string
+	}{
+		{rs.Yen{}, "—"},
+		{rs.Yen{Value: 500, Valid: true}, "500 円"},
+		{rs.Yen{Value: 12_345, Valid: true}, "1.2 万円"},
+		{rs.Yen{Value: 40_217_000, Valid: true}, "4,022 万円"},
+		{rs.Yen{Value: 123_456_789, Valid: true}, "1.2 億円"},
+		{rs.Yen{Value: 2_000_000_000_000, Valid: true}, "2 兆円"},
+		{rs.Yen{Value: -300_000_000, Valid: true}, "-3 億円"},
+		{rs.Yen{Value: 10_000, Valid: true}, "1 万円"},
+		{rs.Yen{Value: 999_950_000, Valid: true}, "10 億円"},
+		{rs.Yen{Value: 150_000_000_000, Valid: true}, "1,500 億円"},
+		{rs.Yen{Value: 999, Valid: true}, "999 円"},
+		{rs.Yen{Value: 35_000, Valid: true}, "3.5 万円"},
+		{rs.Yen{Value: 1_200_000_000, Valid: true}, "12 億円"},
+		{rs.Yen{Value: 677_292_895_000, Valid: true}, "6,773 億円"},
+		{rs.Yen{Value: 1_500_000_000_000, Valid: true}, "1.5 兆円"},
+		{rs.Yen{Value: -569_000, Valid: true}, "-56.9 万円"},
+	} {
+		if got := YenShort(c.in); got != c.want {
+			t.Errorf("YenShort(%v) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}

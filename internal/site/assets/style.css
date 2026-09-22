@@ -1,29 +1,114 @@
-:root { --fg:#222; --muted:#6b7280; --bg:#fff; --line:#e5e7eb; --bar:#2563eb; --neg:#dc2626; --none:#d1d5db; --badge:#fef3c7; --badgefg:#92400e; }
+/* 共通（詳細・一覧・index）。色と余白は変数で持ち、ダークモードは変数の差し替えだけで行う。 */
+:root {
+  color-scheme: light dark;
+  --bg:#f8f7f4; --surface:#ffffff; --surface2:#f1efea; --fg:#1f2328; --muted:#636a73; --line:#e3e0d9;
+  --accent:#2f5d8a; --accent-soft:#a9c1da; --accent-bg:#e8eff7; --link:#1f5fa8;
+  --good:#2e7d4f; --neg:#b3261e; --none:#cfd3d8; --carry:#8a96a3; --warn:#c98a1b;
+  --badge:#fbefd5; --badgefg:#7a4b00;
+  --bar:var(--accent);
+  --radius:10px; --gap:16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:#141619; --surface:#1c1f23; --surface2:#24282d; --fg:#e7e7e4; --muted:#9ba2aa; --line:#33383e;
+    --accent:#7fa8d6; --accent-soft:#3e5a78; --accent-bg:#1f2d3c; --link:#8ab8f0;
+    --good:#6cc28f; --neg:#f08a80; --none:#4a5058; --carry:#7d8894; --warn:#e0a94a;
+    --badge:#433414; --badgefg:#f3d79a;
+  }
+}
 * { box-sizing:border-box; }
-body { margin:0; padding:16px; font:15px/1.6 system-ui,-apple-system,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif; color:var(--fg); background:var(--bg); max-width:1100px; margin-inline:auto; }
-a { color:#1d4ed8; }
-h1 { font-size:1.4rem; margin:0.2em 0; } h2 { font-size:1.1rem; border-bottom:1px solid var(--line); padding-bottom:4px; margin:1.6em 0 0.6em; } h3 { font-size:1rem; margin:1em 0 0.4em; }
-h2 small { font-weight:normal; color:var(--muted); font-size:0.8rem; margin-left:8px; }
+body { margin:0 auto; padding:24px 20px 40px; max-width:1080px; font:16px/1.7 system-ui,-apple-system,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif; color:var(--fg); background:var(--bg); }
+/* 一覧系は列が多いので、密度の見直し（案 2）までは従来の文字サイズと幅を保つ */
+body.index, body.list { font-size:15px; max-width:1100px; }
+a { color:var(--link); }
+h1 { font-size:1.7rem; line-height:1.35; margin:0.15em 0 0.3em; letter-spacing:0.01em; }
+h2 { font-size:1.15rem; margin:2.2em 0 0.7em; }
+h3 { font-size:1rem; margin:1.4em 0 0.4em; }
+h2 small, h3 small { font-weight:normal; color:var(--muted); font-size:0.8rem; margin-left:8px; }
 .muted, .sub { color:var(--muted); } .sub { font-size:0.9em; }
-nav.top { display:flex; justify-content:space-between; font-size:0.9rem; }
+nav.top { display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:20px; }
+nav.top .brand { color:var(--muted); letter-spacing:0.08em; }
 .id { color:var(--muted); font-weight:normal; margin-right:6px; }
-.org { margin:0; } .meta span { display:inline-block; margin-right:12px; color:var(--muted); font-size:0.9rem; }
-.axis { background:#f3f4f6; padding:4px 8px; border-radius:4px; display:inline-block; font-size:0.9rem; }
-.badge { display:inline-block; background:var(--badge); color:var(--badgefg); border-radius:999px; padding:1px 10px; margin-right:6px; font-size:0.85rem; }
-details { margin:4px 0; } details p { margin:4px 0 8px; white-space:pre-wrap; }
-dl { display:grid; grid-template-columns:max-content 1fr; gap:4px 16px; margin:0; }
-dt { color:var(--muted); white-space:nowrap; } dd { margin:0; white-space:pre-wrap; }
+.org { margin:0; color:var(--muted); font-size:0.95rem; }
+.meta { margin:0 0 8px; } .meta span { display:inline-block; margin-right:14px; color:var(--muted); font-size:0.88rem; }
+.axis { background:var(--surface2); padding:3px 10px; border-radius:999px; display:inline-block; font-size:0.85rem; color:var(--muted); margin:4px 0; }
+.badge { display:inline-block; background:var(--badge); color:var(--badgefg); border-radius:999px; padding:1px 10px; margin-right:6px; font-size:0.85rem; white-space:nowrap; }
+details { margin:4px 0; } details p { margin:4px 0 8px; white-space:pre-wrap; } summary { cursor:pointer; color:var(--link); }
+dl { display:grid; grid-template-columns:max-content 1fr; gap:6px 20px; margin:0; }
+dt { color:var(--muted); white-space:nowrap; } dd { margin:0; white-space:pre-wrap; font-variant-numeric:tabular-nums; }
 .bars .bar { display:grid; grid-template-columns:220px 1fr 160px; align-items:center; gap:8px; margin:4px 0; }
 .bars .value { text-align:right; font-variant-numeric:tabular-nums; }
 svg { width:100%; height:14px; display:block; } rect { fill:var(--bar); } .neg rect { fill:var(--neg); } .none rect { fill:var(--none); }
-table { border-collapse:collapse; width:100%; font-size:0.95rem; } th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+table { border-collapse:collapse; width:100%; font-size:0.95rem; } th, td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+thead th { color:var(--muted); font-weight:600; font-size:0.85rem; }
 td.num, td.rate span { text-align:right; font-variant-numeric:tabular-nums; }
 .yeartable td { min-width:160px; } .yeartable td span, td.rate span { display:block; font-size:0.85rem; color:var(--muted); }
 td.rate svg { height:8px; }
 .notes ul { margin:0; padding-left:20px; }
-footer { margin-top:2em; padding-top:1em; border-top:1px solid var(--line); font-size:0.85rem; }
-@media (max-width:700px) { .bars .bar { grid-template-columns:1fr; gap:2px; } .bars .value { text-align:left; } dl { grid-template-columns:1fr; } }
-.loop { border-left:4px solid var(--none); padding:2px 10px; margin:6px 0; } .loop p { margin:2px 0; }
-.loop.good { border-color:#16a34a; } .loop.bad { border-color:var(--neg); } .loop .verdict { font-weight:bold; margin-left:8px; }
-.loop.bad .verdict { color:var(--neg); } .loop.good .verdict { color:#16a34a; }
+footer { margin-top:3em; padding-top:1em; border-top:1px solid var(--line); font-size:0.85rem; color:var(--muted); }
+.error { color:var(--neg); }
+
+/* ループ検証の 1 件（詳細の「年度をまたぐ推移」） */
+div.loop { border-left:4px solid var(--none); padding:4px 12px; margin:8px 0; background:var(--surface); border-radius:0 var(--radius) var(--radius) 0; } div.loop p { margin:2px 0; }
+div.loop.good { border-color:var(--good); } div.loop.bad { border-color:var(--neg); } div.loop .verdict { font-weight:bold; margin-left:8px; }
+div.loop.bad .verdict { color:var(--neg); } div.loop.good .verdict { color:var(--good); }
 table.timeline th.num, table.timeline td.num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+/* 詳細: 要点と兆候 */
+.detail .hero { margin-bottom:8px; }
+.digest { background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:var(--radius); padding:14px 20px; margin:20px 0; }
+.digest h2 { margin:0 0 4px; font-size:0.85rem; color:var(--muted); font-weight:600; letter-spacing:0.08em; }
+.digest p { margin:4px 0; font-size:1.02rem; }
+.signals h2 { margin-top:1.4em; }
+.signals ul { list-style:none; padding:0; margin:0; display:grid; gap:6px; }
+.signals li { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 8px; }
+.signals .evidence { font-size:0.9rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+.about { margin-top:12px; }
+
+/* 詳細: ①〜⑥ の流れ。④ までは金額、⑤⑥ は判断のことば */
+.flow { list-style:none; padding:0; margin:0; display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:22px; }
+.flow .step { position:relative; }
+.flow .step:not(:last-child)::after { content:"→"; position:absolute; right:-18px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:0.95rem; }
+.flow a { display:flex; flex-direction:column; gap:2px; height:100%; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); color:inherit; text-decoration:none; }
+.flow a:hover, .flow a:focus-visible { border-color:var(--accent); }
+.flow .no { font-weight:600; font-size:0.9rem; }
+.flow .period { font-size:0.75rem; color:var(--muted); line-height:1.4; }
+.flow .main { font-size:1.3rem; line-height:1.3; margin:6px 0 4px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.flow .sub { font-size:0.8rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+.flow .judge a { background:var(--surface2); border-style:dashed; }
+.flow .judge .main { font-size:1.02rem; font-weight:600; }
+@media (max-width:979px) {
+  .flow { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+  .flow .step:nth-child(3n)::after { content:none; }
+}
+@media (max-width:599px) {
+  .flow { grid-template-columns:1fr; gap:20px; }
+  .flow .step:not(:last-child)::after, .flow .step:nth-child(3n):not(:last-child)::after { content:"↓"; right:auto; left:24px; top:auto; bottom:-20px; transform:none; }
+}
+
+/* 詳細: お金の内訳（入口と出口を同じ尺度で） */
+.wf { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:10px 18px 14px; }
+.wf-group { margin:10px 0 2px; font-size:0.78rem; color:var(--muted); letter-spacing:0.08em; }
+.wf-row { display:grid; grid-template-columns:8.5em minmax(0, 1fr) 7.5em; align-items:center; gap:12px; padding:3px 0; }
+.wf-label { font-size:0.9rem; }
+.wf-value { text-align:right; font-variant-numeric:tabular-nums; font-size:0.95rem; }
+svg.wf-bar { height:16px; background:var(--surface2); border-radius:3px; }
+.wf-row rect { fill:var(--accent-soft); }
+.wf-row.total { border-top:1px solid var(--line); border-bottom:1px solid var(--line); margin:4px 0; padding:6px 0; }
+.wf-row.total .wf-label, .wf-row.total .wf-value { font-weight:700; } .wf-row.total rect { fill:var(--accent); }
+.wf-row.exec rect { fill:var(--accent); } .wf-row.carry rect { fill:var(--carry); } .wf-row.unused rect { fill:var(--warn); } .wf-row.neg rect { fill:var(--neg); }
+.money .note { font-size:0.9rem; color:var(--neg); }
+
+/* 詳細: 各段階 */
+h2.part { margin-top:2.8em; padding-top:1em; border-top:1px solid var(--line); }
+.stage h2 { font-size:1.02rem; margin:1.8em 0 0.5em; }
+
+@media (max-width:700px) {
+  body { padding:16px 16px 32px; }
+  h1 { font-size:1.4rem; }
+  .bars .bar { grid-template-columns:1fr; gap:2px; } .bars .value { text-align:left; }
+  dl { grid-template-columns:1fr; gap:0; } dd { margin-bottom:6px; }
+  .wf-row { grid-template-columns:6.5em minmax(0, 1fr) 6.5em; gap:8px; }
+  .wf { padding:8px 12px 12px; }
+  table.timeline, .yeartable, table.outcomes { display:block; overflow-x:auto; }
+}

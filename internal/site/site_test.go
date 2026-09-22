@@ -30,7 +30,8 @@ func TestBuild(t *testing.T) {
 		}
 	}
 	detail, _ := os.ReadFile(filepath.Join(out, "p", "884.html"))
-	for _, want := range []string{"法教育の推進", "40,217,000 円", "縮減", "36,000,000 円", "24,844,000 円", "3,524,000 円", render.Attribution, "2026-09-22", `href="../index.html"`, `href="../assets/style.css"`} {
+	for _, want := range []string{"法教育の推進", "40,217,000 円", "縮減", "36,000,000 円", "24,844,000 円", "3,524,000 円", render.Attribution, "2026-09-22", `href="../index.html"`, `href="../assets/style.css"`,
+		"要点", `<ol class="flow">`, `href="#s6"`, `id="s6"`, "お金の内訳", "歳出予算現額", "兆候", "反映状況「縮減」"} {
 		if !strings.Contains(string(detail), want) {
 			t.Errorf("p/884.html missing %q", want)
 		}

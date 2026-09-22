@@ -82,10 +82,16 @@ func TestTrackContradictionAndZeroed(t *testing.T) {
 	if tl.Loops[0].Verdict != VerdictContradiction || !tl.Loops[0].Signals.Has(SignalReflectionContradicted) {
 		t.Errorf("loop = %+v", tl.Loops[0])
 	}
+	if evs := Explain(tl, SignalReflectionContradicted, Thresholds{}); len(evs) != 1 || evs[0].Text != "廃止" || evs[0].Base.Value != 100 || evs[0].Amount.Value != 200 {
+		t.Errorf("contradiction evidence = %+v", evs)
+	}
 	s25.Budgets[1].Total.Initial = y(0)
 	tl = Track([]*rs.Sheet{s24, s25}, Thresholds{})
 	if tl.Loops[0].Verdict != VerdictConsistent || !tl.Loops[0].Signals.Has(SignalRequestZeroed) {
 		t.Errorf("zeroed loop = %+v", tl.Loops[0])
+	}
+	if evs := Explain(tl, SignalRequestZeroed, Thresholds{}); len(evs) != 1 || evs[0].Base.Value != 150 || evs[0].Amount.Value != 0 || !evs[0].Amount.Valid {
+		t.Errorf("zeroed evidence = %+v", evs)
 	}
 	// 現状通りは判定対象外
 	s24.Evaluation.Reflection = "現状通り"

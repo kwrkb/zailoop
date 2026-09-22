@@ -46,6 +46,7 @@ var funcs = template.FuncMap{
 		return v
 	},
 	"yenSigned": func(v int64) string { return render.YenValue(v) },
+	"yenShort":  render.YenShort,
 	"inc":       func(n int) int { return n + 1 },
 	"verdict":   func(v lifecycle.LoopVerdict) string { return v.String() },
 	"verdictClass": func(v lifecycle.LoopVerdict) string {
@@ -85,9 +86,12 @@ type detailData struct {
 	TL          *lifecycle.Timeline
 	Multi       bool // 2 年度以上のシートがある
 	Summary     lifecycle.Summary
-	StageBars   []Bar
+	Digest      []string
+	Flow        []flowStep
+	WfIn, WfOut []wfRow
+	WfNote      string
 	YearBars    []yearBar
-	Signals     []lifecycle.SignalDesc
+	Badges      []badge
 	Generated   string
 	Attribution string
 	Root        string // index.html への相対パス（"../"）
@@ -100,18 +104,9 @@ type yearBar struct {
 	Executed Bar
 }
 
-// writeDetail は 1 事業の詳細ページを書く。
-func writeDetail(w io.Writer, tl *lifecycle.Timeline, sm lifecycle.Summary, generated string) error {
+// writeDetail は 1 事業の詳細ページを書く。th は兆候の根拠の文言に使う（判定は sm で済んでいる）。
+func writeDetail(w io.Writer, tl *lifecycle.Timeline, sm lifecycle.Summary, th lifecycle.Thresholds, generated string) error {
 	lc := tl.Latest
-	n := lc.ActualYear
-	stage := []BarInput{
-		{Label: fmt.Sprintf("① FY%d 概算要求", n), Value: sm.Request, Note: lc.Request.State.String()},
-		{Label: fmt.Sprintf("② FY%d 当初予算", n), Value: sm.Initial, Note: lc.Enacted.State.String()},
-		{Label: fmt.Sprintf("② FY%d 歳出予算現額", n), Value: sm.Current, Note: lc.Enacted.State.String()},
-		{Label: fmt.Sprintf("③ FY%d 執行額", n), Value: lc.Execution.Executed, Note: lc.Execution.State.String()},
-		{Label: fmt.Sprintf("④ FY%d 不用相当額", n), Value: sm.Unused, Note: unusedNote(lc.Settlement)},
-		{Label: fmt.Sprintf("⑥ FY%d 概算要求", n+2), Value: sm.NextRequest, Note: lc.Reflection.State.String()},
-	}
 	var ybars []yearBar
 	if len(lc.Years) > 0 {
 		var in []BarInput
@@ -123,14 +118,11 @@ func writeDetail(w io.Writer, tl *lifecycle.Timeline, sm lifecycle.Summary, gene
 			ybars = append(ybars, yearBar{Year: y.Year, Initial: bars[i*3], Current: bars[i*3+1], Executed: bars[i*3+2]})
 		}
 	}
-	var sigs []lifecycle.SignalDesc
-	for _, d := range lifecycle.SignalInfo {
-		if sm.Signals.Has(d.Signal) {
-			sigs = append(sigs, d)
-		}
-	}
+	wfIn, wfOut, wfNote := waterfall(lc)
 	return templates.ExecuteTemplate(w, "detail.html", detailData{
-		LC: lc, TL: tl, Multi: len(tl.SheetYears) > 1, Summary: sm, StageBars: Bars(stage, render.Yen), YearBars: ybars, Signals: sigs,
+		LC: lc, TL: tl, Multi: len(tl.SheetYears) > 1, Summary: sm,
+		Digest: digest(tl), Flow: flowSteps(lc, sm), WfIn: wfIn, WfOut: wfOut, WfNote: wfNote,
+		YearBars: ybars, Badges: signalBadges(tl, sm.Signals, th),
 		Generated: generated, Attribution: render.Attribution, Root: "../",
 	})
 }

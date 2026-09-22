@@ -3,15 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>{{.LC.Project.ID}} {{.LC.Project.Name}} | zailoop</title>
 <link rel="stylesheet" href="{{.Root}}assets/style.css">
 </head>
 <body class="detail">
-<nav class="top"><a href="{{.Root}}index.html">← 一覧へ</a> <span class="muted">zailoop</span></nav>
-<header>
-  <h1><span class="id">{{.LC.Project.ID}}</span> {{.LC.Project.Name}}</h1>
+<nav class="top"><a href="{{.Root}}index.html">← 一覧へ</a> <span class="brand">zailoop</span></nav>
+<header class="hero">
   <p class="org">{{.LC.Project.Ministry}}{{with .LC.Project.Bureau}} / {{.}}{{end}}{{with .LC.Project.Division}} / {{.}}{{end}}</p>
+  <h1>{{.LC.Project.Name}}</h1>
   <p class="meta">
+    <span class="id">予算事業ID {{.LC.Project.ID}}</span>
     {{with .LC.Project.Category}}<span>{{.}}</span>{{end}}
     {{with .LC.Project.StartYear}}<span>開始 {{.}}年度</span>{{end}}
     {{with .LC.Project.EndYear}}<span>終了予定 {{.}}年度</span>{{end}}
@@ -19,23 +21,57 @@
     {{with .LC.Project.Methods}}<span>実施方法: {{join . "、"}}</span>{{end}}
   </p>
   <p class="axis">{{.LC.SheetYear}}年度シート ／ 軸: FY{{.LC.ActualYear}} 執行実績（確定している最新の予算年度）</p>
-  {{if .Signals}}<p class="signals">{{range .Signals}}<span class="badge" title="{{.Description}}">{{.Label}}</span>{{end}}</p>{{end}}
-  {{with .LC.Project.Purpose}}<details><summary>事業の目的</summary><p>{{.}}</p></details>{{end}}
-  {{with .LC.Project.Summary}}<details><summary>事業の概要</summary><p>{{.}}</p></details>{{end}}
 </header>
 
-<section class="loop">
-  <h2>ライフサイクル（金額）</h2>
-  <div class="bars">
-  {{range .StageBars}}
-    <div class="bar {{.Class}}">
-      <div class="label">{{.Label}}</div>
-      <svg viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="1" height="8" width="{{pct .Width}}"></rect></svg>
-      <div class="value">{{.Text}}</div>
-    </div>
-  {{end}}
-  </div>
+{{if .Digest}}
+<section class="digest" aria-labelledby="digest-h">
+  <h2 id="digest-h">要点</h2>
+  {{range .Digest}}<p>{{.}}</p>{{end}}
 </section>
+{{end}}
+
+{{if .Badges}}
+<section class="signals" aria-labelledby="signals-h">
+  <h2 id="signals-h">兆候 <small>生成時の判定。閾値は zailoop build の引数で変えられます</small></h2>
+  <ul>{{range .Badges}}<li><span class="badge" title="{{.Description}}">{{.Label}}</span>{{with .Evidence}} <span class="evidence">{{.}}</span>{{end}}</li>{{end}}</ul>
+</section>
+{{end}}
+
+{{if or .LC.Project.Purpose .LC.Project.Summary}}
+<section class="about">
+  {{with .LC.Project.Purpose}}<details><summary>事業の目的</summary><p>{{.}}</p></details>{{end}}
+  {{with .LC.Project.Summary}}<details><summary>事業の概要</summary><p>{{.}}</p></details>{{end}}
+</section>
+{{end}}
+
+<section class="lifecycle" aria-labelledby="flow-h">
+  <h2 id="flow-h">ライフサイクル <small>FY{{.LC.ActualYear}} を軸にした 6 段階。各段から下の詳細へ移れます</small></h2>
+  <ol class="flow">
+  {{range .Flow}}
+    <li class="step {{if .Money}}money{{else}}judge{{end}}"><a href="#{{.Anchor}}">
+      <span class="no">{{.No}} {{.Title}}</span>
+      <span class="period">{{.Period}}</span>
+      <strong class="main"{{with .Full}} title="{{.}}"{{end}}>{{.Main}}</strong>
+      {{range .Subs}}<span class="sub">{{.}}</span>{{end}}
+    </a></li>
+  {{end}}
+  </ol>
+</section>
+
+{{if .WfIn}}
+<section class="money" aria-labelledby="money-h">
+  <h2 id="money-h">お金の内訳 <small>FY{{.LC.ActualYear}} の歳出予算現額がどう積み上がり、どう使われたか（全行同じ尺度）</small></h2>
+  <div class="wf">
+    <p class="wf-group">財源</p>
+    {{range .WfIn}}<div class="wf-row {{.Class}}"><span class="wf-label">{{.Label}}</span><svg class="wf-bar" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect x="{{pct .X}}" y="0" height="10" width="{{pct .W}}"></rect></svg><span class="wf-value" title="{{.Full}}">{{.Text}}</span></div>
+    {{end}}
+    {{if .WfOut}}<p class="wf-group">使い道</p>
+    {{range .WfOut}}<div class="wf-row {{.Class}}"><span class="wf-label">{{.Label}}</span><svg class="wf-bar" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect x="{{pct .X}}" y="0" height="10" width="{{pct .W}}"></rect></svg><span class="wf-value" title="{{.Full}}">{{.Text}}</span></div>
+    {{end}}{{end}}
+  </div>
+  {{with .WfNote}}<p class="note">{{.}}</p>{{end}}
+</section>
+{{end}}
 
 {{if .YearBars}}
 <section class="years">
@@ -79,11 +115,12 @@
 {{end}}
 
 {{$n := .LC.ActualYear}}
-<section class="stage"><h2>① 要求 <small>FY{{$n}} 概算要求</small></h2>
+<h2 class="part">各段階の詳細 <small>シートの値（全桁）</small></h2>
+<section class="stage" id="s1"><h2>① 要求 <small>FY{{$n}} 概算要求</small></h2>
   <dl><dt>要求額</dt><dd>{{if isOK .LC.Request.State}}{{yen .LC.Request.Amount}}{{else}}{{state .LC.Request.State}}{{end}}</dd></dl>
 </section>
 
-<section class="stage"><h2>② 成立 <small>FY{{$n}} 予算</small></h2>
+<section class="stage" id="s2"><h2>② 成立 <small>FY{{$n}} 予算</small></h2>
   {{with .LC.Enacted}}{{if isOK .State}}
   <dl>
     <dt>当初予算</dt><dd>{{yen .Initial}}</dd>
@@ -96,7 +133,7 @@
   {{else}}<p class="muted">{{state .State}}</p>{{end}}{{end}}
 </section>
 
-<section class="stage"><h2>③ 執行 <small>FY{{$n}} 執行実績</small></h2>
+<section class="stage" id="s3"><h2>③ 執行 <small>FY{{$n}} 執行実績</small></h2>
   {{with .LC.Execution}}
   <dl>
     {{if isOK .State}}<dt>執行額</dt><dd>{{yen .Executed}}</dd><dt>執行率</dt><dd>{{ratio .Rate}}</dd>
@@ -105,7 +142,7 @@
   </dl>{{end}}
 </section>
 
-<section class="stage"><h2>④ 決算 <small>FY{{$n}} 繰越・不用（不用相当額は 現額−執行−翌年度繰越 の導出値）</small></h2>
+<section class="stage" id="s4"><h2>④ 決算 <small>FY{{$n}} 繰越・不用（不用相当額は 現額−執行−翌年度繰越 の導出値）</small></h2>
   {{with .LC.Settlement}}
   <dl>
     <dt>翌年度繰越</dt><dd>{{yen .CarriedOut}}</dd>
@@ -113,7 +150,7 @@
   </dl>{{end}}
 </section>
 
-<section class="stage"><h2>⑤ 評価 <small>{{.LC.SheetYear}}年度シートの点検・評価</small></h2>
+<section class="stage" id="s5"><h2>⑤ 評価 <small>{{.LC.SheetYear}}年度シートの点検・評価</small></h2>
   {{with .LC.Evaluation}}
   <dl>
     <dt>所管部局の点検</dt><dd>{{or .SelfCheck "（記載なし）"}}</dd>
@@ -133,7 +170,7 @@
   {{end}}{{end}}
 </section>
 
-<section class="stage"><h2>⑥ 翌年度反映 <small>概算要求への反映と FY{{.LC.Reflection.RequestYear}} 要求</small></h2>
+<section class="stage" id="s6"><h2>⑥ 翌年度反映 <small>概算要求への反映と FY{{.LC.Reflection.RequestYear}} 要求</small></h2>
   {{with .LC.Reflection}}
   <dl>
     <dt>反映状況</dt><dd>{{or .Status "（記載なし）"}}{{with .Detail}}<br><span class="sub">{{.}}</span>{{end}}</dd>

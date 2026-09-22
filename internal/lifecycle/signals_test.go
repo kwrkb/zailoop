@@ -128,3 +128,38 @@ func TestSummarizeNewProjectHasNoAmounts(t *testing.T) {
 		t.Errorf("next: %+v", sm)
 	}
 }
+
+func TestExplain(t *testing.T) {
+	y := func(v int64) rs.Yen { return rs.Yen{Value: v, Valid: true} }
+	low := &rs.Sheet{FiscalYear: 2024, Budgets: []rs.BudgetYear{{Year: 2023, HasTotal: true, Total: rs.BudgetTotal{Current: y(10_000_000_000), Executed: y(1_000_000_000), ExecRate: rs.Ratio{Value: 0.1, Valid: true}, CarriedOut: y(0)}}}}
+	tl := Track([]*rs.Sheet{low}, Thresholds{})
+	s := SummarizeTimeline(tl, Thresholds{}).Signals
+	evs := Explain(tl, s, Thresholds{})
+	if len(evs) != s.Count() {
+		t.Fatalf("len = %d, want %d", len(evs), s.Count())
+	}
+	for _, ev := range evs {
+		switch ev.Signal {
+		case SignalLowExecution:
+			if ev.Observed != 0.1 || ev.Threshold != 0.5 {
+				t.Errorf("low exec: %+v", ev)
+			}
+		case SignalLargeUnused:
+			if ev.Amount.Value != 9_000_000_000 || ev.Observed != 0.9 || ev.ThresholdAmount != 1_000_000_000 || ev.Threshold != 0.2 {
+				t.Errorf("large unused: %+v", ev)
+			}
+		}
+	}
+	// 立っていない兆候は返さない
+	if evs := Explain(tl, SignalLowExecution, Thresholds{}); len(evs) != 1 || evs[0].Signal != SignalLowExecution {
+		t.Errorf("only low exec: %+v", evs)
+	}
+}
+
+func TestExplain884Outcome(t *testing.T) {
+	tl := Track([]*rs.Sheet{sheet884()}, Thresholds{})
+	evs := Explain(tl, SignalOutcomeOvershoot|SignalCut, Thresholds{OutcomeOvershoot: 150})
+	if len(evs) != 2 || evs[0].Signal != SignalCut || evs[0].Text != "縮減" || evs[1].Observed != 177.3 || evs[1].Threshold != 150 {
+		t.Errorf("884: %+v", evs)
+	}
+}
