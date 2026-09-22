@@ -66,6 +66,7 @@ type Meta struct {
 	Count       int                  `json:"count"`
 	Attribution string               `json:"attribution"`
 	Generated   string               `json:"generated"`
+	Terms       []Term               `json:"terms"` // 見出しの用語の説明（terms.html と同じ）
 }
 
 // Payload は index.html に埋め込む JSON 全体。
@@ -183,6 +184,7 @@ func (b *indexBuilder) payload(sheetYear, actualYear int, th lifecycle.Threshold
 			SheetYear: sheetYear, ActualYear: actualYear, Years: b.years, SheetYears: sheetYears,
 			Ministries: nonNil(b.ministries.list), Categories: nonNil(b.categories.list), Reflections: nonNil(b.reflections.list),
 			Signals: sigs, Thresholds: th, Count: len(b.rows), Attribution: render.Attribution, Generated: generated,
+			Terms: Terms,
 		},
 		Rows: b.rows,
 	}

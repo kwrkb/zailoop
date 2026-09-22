@@ -231,6 +231,14 @@
     return keys.map((k) => m.get(k));
   }
 
+  // src/columns.ts
+  var AMOUNT_COLS = ["request", "initial", "current", "executed", "execRate", "unused", "nextRequest"];
+  var DEFAULT_COLS = ["initial", "executed", "execRate"];
+  function visibleColumns(showAll, sortKey) {
+    if (showAll) return AMOUNT_COLS;
+    return AMOUNT_COLS.filter((c) => DEFAULT_COLS.includes(c) || c === sortKey);
+  }
+
   // src/svg.ts
   var esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
   function bar(ratio, cls = "") {
@@ -267,11 +275,64 @@
     return r.sheetYear < meta.sheetYear;
   }
   function nameCell(r, meta) {
-    const td = h("td", { class: "name" }, h("a", { href: `p/${r.id}.html` }, r.name), raw(sparkline(r.byYear)));
+    const top = h("div", { class: "nm" }, h("a", { href: `p/${r.id}.html` }, r.name));
     if (meta && isStale(r, meta)) {
-      td.appendChild(h("span", { class: "stale", title: `${r.sheetYear}\u5E74\u5EA6\u30B7\u30FC\u30C8\u307E\u3067\u3002\u91D1\u984D\u306F FY${r.actualYear} \u8EF8` }, `${r.sheetYear}\u5E74\u5EA6\u307E\u3067`));
+      top.appendChild(h("span", { class: "stale", title: `${r.sheetYear}\u5E74\u5EA6\u30B7\u30FC\u30C8\u307E\u3067\u3002\u91D1\u984D\u306F FY${r.actualYear} \u8EF8` }, `${r.sheetYear}\u5E74\u5EA6\u307E\u3067`));
     }
-    return td;
+    const sub = h("div", { class: "nm-sub" }, h("span", { class: "id" }, r.id), h("span", {}, r.ministry), r.category ? h("span", {}, r.category) : null, raw(sparkline(r.byYear)));
+    return h("td", { class: "name" }, top, sub);
+  }
+  function scroll(tag, attrs, ...children) {
+    return h("div", { class: "tablewrap" }, h(tag, attrs, ...children));
+  }
+  function th(label, meta, term = "", cls = "") {
+    const t = term ? meta.terms.find((x) => x.name === term) : void 0;
+    return h("th", cls ? { class: cls } : {}, t ? h("abbr", { title: t.desc }, label) : label);
+  }
+  function amountHead(c, meta) {
+    const n2 = meta.actualYear;
+    switch (c) {
+      case "request":
+        return th(`\u2460 FY${n2} \u8981\u6C42`, meta, "\u6982\u7B97\u8981\u6C42", "num");
+      case "initial":
+        return th("\u2461 \u5F53\u521D", meta, "\u5F53\u521D\u4E88\u7B97", "num");
+      case "current":
+        return th("\u2461 \u73FE\u984D", meta, "\u6B73\u51FA\u4E88\u7B97\u73FE\u984D", "num");
+      case "executed":
+        return th("\u2462 \u57F7\u884C", meta, "\u57F7\u884C\u984D", "num");
+      case "execRate":
+        return th("\u2462 \u57F7\u884C\u7387", meta, "\u57F7\u884C\u7387");
+      case "unused":
+        return th("\u2463 \u4E0D\u7528\u76F8\u5F53", meta, "\u4E0D\u7528\u76F8\u5F53\u984D", "num");
+      case "nextRequest":
+        return th(`\u2465 FY${n2 + 2} \u8981\u6C42`, meta, "\u6982\u7B97\u8981\u6C42", "num");
+    }
+  }
+  function amountCell(c, r) {
+    switch (c) {
+      case "request":
+        return yenCell(r.request);
+      case "initial":
+        return yenCell(r.initial);
+      case "current":
+        return yenCell(r.current);
+      case "executed":
+        return yenCell(r.executed);
+      case "execRate":
+        return rateCell(r);
+      case "unused":
+        return yenCell(r.unused, r.unusedState ? "muted" : "");
+      case "nextRequest":
+        return yenCell(r.nextRequest);
+    }
+  }
+  function detailToggle(showAll, onchange) {
+    return h(
+      "label",
+      { class: "toggle" },
+      h("input", { type: "checkbox", checked: showAll, onchange: (e) => onchange(e.target.checked) }),
+      " \u8A73\u7D30\u5217\uFF08\u8981\u6C42\u30FB\u73FE\u984D\u30FB\u4E0D\u7528\u76F8\u5F53\u30FB\u6B21\u5E74\u5EA6\u8981\u6C42\uFF09"
+    );
   }
   function yenCell(v, cls = "") {
     return h("td", { class: `num ${cls}`, title: yenFull(v) }, yenShort(v));
@@ -368,6 +429,8 @@
     const m = params.get("m") ?? "";
     const sort = parseSort(params.get("sort"), "signals", "desc");
     const shown = Number(params.get("n") ?? PAGE) || PAGE;
+    const showAll = params.get("cols") === "all";
+    const cols = visibleColumns(showAll, sort.key);
     const multi = meta.sheetYears.length > 1;
     const set = (k, v) => {
       const p = new URLSearchParams(params);
@@ -415,6 +478,7 @@
         (v) => set("mode", v)
       ),
       select("sort", sortOptions([{ value: "signals:desc", label: "\u5146\u5019\u306E\u6570 \u591A\u3044\u9806" }]), `${sort.key}:${sort.dir}`, (v) => set("sort", v)),
+      detailToggle(showAll, (v) => set("cols", v ? "all" : "")),
       selected.length ? h("button", { type: "button", onclick: () => set("sig", "") }, "\u9078\u629E\u3092\u89E3\u9664") : null
     );
     const { tbody, more } = paged(
@@ -422,17 +486,10 @@
       (r) => h(
         "tr",
         {},
-        h("td", { class: "id" }, r.id),
         nameCell(r, meta),
-        h("td", {}, r.ministry),
         badges(r, meta),
-        yenCell(r.request),
-        yenCell(r.initial),
-        yenCell(r.current),
-        yenCell(r.executed),
-        rateCell(r),
-        yenCell(r.unused, r.unusedState ? "muted" : ""),
-        h("td", {}, r.reflection),
+        ...cols.map((col) => amountCell(col, r)),
+        h("td", { class: "refl" }, r.reflection),
         ...multi ? [loopCell(r)] : []
       ),
       shown,
@@ -448,7 +505,7 @@
       tiles,
       controls,
       summaryLineWithStale(filtered.length, scoped.length, filtered, meta),
-      h(
+      scroll(
         "table",
         { class: "rows" },
         h(
@@ -457,18 +514,11 @@
           h(
             "tr",
             {},
-            h("th", {}, "ID"),
             h("th", {}, "\u4E8B\u696D\u540D"),
-            h("th", {}, "\u5E9C\u7701\u5E81"),
-            h("th", {}, "\u5146\u5019"),
-            h("th", { class: "num" }, "\u2460 \u8981\u6C42"),
-            h("th", { class: "num" }, "\u2461 \u5F53\u521D"),
-            h("th", { class: "num" }, "\u2461 \u73FE\u984D"),
-            h("th", { class: "num" }, "\u2462 \u57F7\u884C"),
-            h("th", {}, "\u2462 \u57F7\u884C\u7387"),
-            h("th", { class: "num" }, "\u2463 \u4E0D\u7528\u76F8\u5F53"),
-            h("th", {}, "\u2465 \u53CD\u6620"),
-            ...multi ? [h("th", {}, "\u524D\u5E74\u53CD\u6620\u2192\u5F53\u521D")] : []
+            th("\u5146\u5019", meta, "\u5146\u5019"),
+            ...cols.map((col) => amountHead(col, meta)),
+            th("\u2465 \u53CD\u6620", meta, "\u53CD\u6620\u72B6\u6CC1"),
+            ...multi ? [th("\u524D\u5E74\u53CD\u6620\u2192\u5F53\u521D", meta, "\u30EB\u30FC\u30D7\u691C\u8A3C")] : []
           )
         ),
         tbody
@@ -484,6 +534,8 @@
     const c = params.get("c") ?? "";
     const sort = parseSort(params.get("sort"));
     const shown = Number(params.get("n") ?? PAGE) || PAGE;
+    const showAll = params.get("cols") === "all";
+    const cols = visibleColumns(showAll, sort.key);
     const multi = meta.sheetYears.length > 1;
     const set = (k, v) => {
       const p = new URLSearchParams(params);
@@ -493,7 +545,6 @@
       update(p);
     };
     const filtered = sortRows(applyFilter(rows, { q, ministry: m, category: c }), sort.key, sort.dir);
-    const n2 = meta.actualYear;
     const controls = h(
       "div",
       { class: "controls" },
@@ -505,24 +556,17 @@
       }),
       select("m", ministryOptions(rows, meta), m, (v) => set("m", v)),
       select("c", [{ value: "", label: "\u4E8B\u696D\u533A\u5206: \u3059\u3079\u3066" }, ...meta.categories.map((x) => ({ value: x, label: x }))], c, (v) => set("c", v)),
-      select("sort", sortOptions(), `${sort.key}:${sort.dir}`, (v) => set("sort", v))
+      select("sort", sortOptions(), `${sort.key}:${sort.dir}`, (v) => set("sort", v)),
+      detailToggle(showAll, (v) => set("cols", v ? "all" : ""))
     );
     const { tbody, more } = paged(
       filtered,
       (r) => h(
         "tr",
         {},
-        h("td", { class: "id" }, r.id),
         nameCell(r, meta),
-        h("td", {}, r.ministry),
-        h("td", { class: "muted" }, r.category),
-        yenCell(r.request),
-        yenCell(r.initial),
-        yenCell(r.current),
-        yenCell(r.executed),
-        rateCell(r),
-        yenCell(r.unused, r.unusedState ? "muted" : ""),
-        h("td", {}, r.reflection),
+        ...cols.map((col) => amountCell(col, r)),
+        h("td", { class: "refl" }, r.reflection),
         ...multi ? [loopCell(r)] : [],
         badges(r, meta)
       ),
@@ -534,10 +578,10 @@
       }
     );
     root.replaceChildren(
-      h("h2", {}, "\u4E00\u89A7", h("small", { class: "muted" }, ` FY${n2} \u3092\u8EF8\u306B\u3057\u305F 6 \u6BB5\u968E\u306E\u91D1\u984D`)),
+      h("h2", {}, "\u4E00\u89A7", h("small", { class: "muted" }, ` FY${meta.actualYear} \u3092\u8EF8\u306B\u3057\u305F\u91D1\u984D\u3002\u898B\u51FA\u3057\u306E\u70B9\u7DDA\u306F\u7528\u8A9E\u306E\u8AAC\u660E`)),
       controls,
       summaryLineWithStale(filtered.length, rows.length, filtered, meta),
-      h(
+      scroll(
         "table",
         { class: "rows" },
         h(
@@ -546,19 +590,11 @@
           h(
             "tr",
             {},
-            h("th", {}, "ID"),
             h("th", {}, "\u4E8B\u696D\u540D"),
-            h("th", {}, "\u5E9C\u7701\u5E81"),
-            h("th", {}, "\u533A\u5206"),
-            h("th", { class: "num" }, `\u2460 FY${n2} \u8981\u6C42`),
-            h("th", { class: "num" }, `\u2461 \u5F53\u521D`),
-            h("th", { class: "num" }, `\u2461 \u73FE\u984D`),
-            h("th", { class: "num" }, `\u2462 \u57F7\u884C`),
-            h("th", {}, "\u2462 \u57F7\u884C\u7387"),
-            h("th", { class: "num" }, "\u2463 \u4E0D\u7528\u76F8\u5F53"),
-            h("th", {}, "\u2465 \u53CD\u6620"),
-            ...multi ? [h("th", {}, "\u524D\u5E74\u53CD\u6620\u2192\u5F53\u521D")] : [],
-            h("th", {}, "\u5146\u5019")
+            ...cols.map((col) => amountHead(col, meta)),
+            th("\u2465 \u53CD\u6620", meta, "\u53CD\u6620\u72B6\u6CC1"),
+            ...multi ? [th("\u524D\u5E74\u53CD\u6620\u2192\u5F53\u521D", meta, "\u30EB\u30FC\u30D7\u691C\u8A3C")] : [],
+            th("\u5146\u5019", meta, "\u5146\u5019")
           )
         ),
         tbody
@@ -633,14 +669,12 @@
       (r) => h(
         "tr",
         {},
-        h("td", { class: "id" }, r.id),
         nameCell(r, meta),
-        h("td", {}, r.ministry),
         loopCell(r),
         yenCell(r.prevInitial),
         yenCell(r.nextInitial),
-        h("td", { class: r.verdict === 3 ? "bad" : r.verdict === 2 ? "good" : "muted" }, VERDICT_LABEL[r.verdict] ?? ""),
-        h("td", {}, r.reflection),
+        h("td", { class: `verdict ${r.verdict === 3 ? "bad" : r.verdict === 2 ? "good" : "muted"}` }, VERDICT_LABEL[r.verdict] ?? ""),
+        h("td", { class: "refl" }, r.reflection),
         badges(r, meta)
       ),
       shown,
@@ -656,7 +690,7 @@
       controls,
       table,
       summaryLine(list.length, scoped.length),
-      h(
+      scroll(
         "table",
         { class: "rows" },
         h(
@@ -665,13 +699,11 @@
           h(
             "tr",
             {},
-            h("th", {}, "ID"),
             h("th", {}, "\u4E8B\u696D\u540D"),
-            h("th", {}, "\u5E9C\u7701\u5E81"),
             h("th", {}, `${prevYear} \u53CD\u6620 \u2192 \u5F53\u521D`),
             h("th", { class: "num" }, `FY${prevYear} \u5F53\u521D`),
             h("th", { class: "num" }, `FY${prevYear + 1} \u5F53\u521D`),
-            h("th", {}, "\u5224\u5B9A"),
+            th("\u5224\u5B9A", meta, "\u30EB\u30FC\u30D7\u691C\u8A3C"),
             h("th", {}, `${prevYear + 1} \u53CD\u6620`),
             h("th", {}, "\u5146\u5019")
           )
@@ -719,15 +751,13 @@
         return h(
           "tr",
           {},
-          h("td", { class: "id" }, r.id),
           nameCell(r, meta),
-          h("td", {}, r.ministry),
           h("td", { class: "num" }, String(r.outcomes)),
           h("td", { class: "num" }, ratePct(mn)),
           h("td", { class: "num" }, ratePct(mx)),
           h("td", { class: "rates muted" }, r.rates.map((v) => ratePct(v)).join(" / ")),
           yenCell(r.initial),
-          h("td", {}, r.reflection)
+          h("td", { class: "refl" }, r.reflection)
         );
       },
       shown,
@@ -744,7 +774,7 @@
       h("div", { class: "histwrap" }, raw(histogramSvg(bins))),
       tabBar,
       summaryLine(list.length, scoped.length),
-      h(
+      scroll(
         "table",
         { class: "rows" },
         h(
@@ -753,9 +783,7 @@
           h(
             "tr",
             {},
-            h("th", {}, "ID"),
             h("th", {}, "\u4E8B\u696D\u540D"),
-            h("th", {}, "\u5E9C\u7701\u5E81"),
             h("th", { class: "num" }, "\u6307\u6A19\u6570"),
             h("th", { class: "num" }, "\u6700\u5C0F"),
             h("th", { class: "num" }, "\u6700\u5927"),

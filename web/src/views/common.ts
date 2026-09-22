@@ -1,8 +1,9 @@
 import { VERDICT_LABEL, type Meta, type Row } from "../data.ts";
 import { initialDelta } from "../filter.ts";
-import { h, raw } from "../dom.ts";
+import { h, raw, type Child } from "../dom.ts";
 import { yenFull, yenShort, pct } from "../format.ts";
 import { bar, sparkline } from "../svg.ts";
+import type { AmountCol } from "../columns.ts";
 
 export const PAGE = 100;
 
@@ -11,13 +12,77 @@ export function isStale(r: Row, meta: Meta): boolean {
   return r.sheetYear < meta.sheetYear;
 }
 
-/** 事業名セル（詳細への相対リンク + スパークライン）。古いシートの行には年度を明示する。 */
+/** 事業名セル（2 段）。1 段目は詳細への相対リンク、2 段目は ID・府省庁・区分とスパークライン。
+ * 古いシートの行には年度を明示する。ID・府省庁・区分の列は持たず、ここにまとめる。 */
 export function nameCell(r: Row, meta?: Meta): HTMLElement {
-  const td = h("td", { class: "name" }, h("a", { href: `p/${r.id}.html` }, r.name), raw(sparkline(r.byYear)));
+  const top = h("div", { class: "nm" }, h("a", { href: `p/${r.id}.html` }, r.name));
   if (meta && isStale(r, meta)) {
-    td.appendChild(h("span", { class: "stale", title: `${r.sheetYear}年度シートまで。金額は FY${r.actualYear} 軸` }, `${r.sheetYear}年度まで`));
+    top.appendChild(h("span", { class: "stale", title: `${r.sheetYear}年度シートまで。金額は FY${r.actualYear} 軸` }, `${r.sheetYear}年度まで`));
   }
-  return td;
+  const sub = h("div", { class: "nm-sub" }, h("span", { class: "id" }, r.id), h("span", {}, r.ministry), r.category ? h("span", {}, r.category) : null, raw(sparkline(r.byYear)));
+  return h("td", { class: "name" }, top, sub);
+}
+
+/** 横に広い表を包む。狭い画面では表だけ横スクロールし、ページ全体は横に動かない。 */
+export function scroll(tag: string, attrs: Record<string, string>, ...children: Child[]): HTMLElement {
+  return h("div", { class: "tablewrap" }, h(tag, attrs, ...children));
+}
+
+/** 見出しセル。用語があれば説明を title に入れ、点線の下線で示す（詳しくは terms.html）。 */
+export function th(label: string, meta: Meta, term = "", cls = ""): HTMLElement {
+  const t = term ? meta.terms.find((x) => x.name === term) : undefined;
+  return h("th", cls ? { class: cls } : {}, t ? h("abbr", { title: t.desc }, label) : label);
+}
+
+/** 金額列の見出し。 */
+export function amountHead(c: AmountCol, meta: Meta): HTMLElement {
+  const n = meta.actualYear;
+  switch (c) {
+    case "request":
+      return th(`① FY${n} 要求`, meta, "概算要求", "num");
+    case "initial":
+      return th("② 当初", meta, "当初予算", "num");
+    case "current":
+      return th("② 現額", meta, "歳出予算現額", "num");
+    case "executed":
+      return th("③ 執行", meta, "執行額", "num");
+    case "execRate":
+      return th("③ 執行率", meta, "執行率");
+    case "unused":
+      return th("④ 不用相当", meta, "不用相当額", "num");
+    case "nextRequest":
+      return th(`⑥ FY${n + 2} 要求`, meta, "概算要求", "num");
+  }
+}
+
+/** 金額列のセル。 */
+export function amountCell(c: AmountCol, r: Row): HTMLElement {
+  switch (c) {
+    case "request":
+      return yenCell(r.request);
+    case "initial":
+      return yenCell(r.initial);
+    case "current":
+      return yenCell(r.current);
+    case "executed":
+      return yenCell(r.executed);
+    case "execRate":
+      return rateCell(r);
+    case "unused":
+      return yenCell(r.unused, r.unusedState ? "muted" : "");
+    case "nextRequest":
+      return yenCell(r.nextRequest);
+  }
+}
+
+/** 詳細列の切り替え（URL の cols=all）。 */
+export function detailToggle(showAll: boolean, onchange: (v: boolean) => void): HTMLElement {
+  return h(
+    "label",
+    { class: "toggle" },
+    h("input", { type: "checkbox", checked: showAll, onchange: (e) => onchange((e.target as HTMLInputElement).checked) }),
+    " 詳細列（要求・現額・不用相当・次年度要求）",
+  );
 }
 
 /** 金額セル（短い表記、title に全桁）。 */

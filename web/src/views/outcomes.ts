@@ -4,7 +4,7 @@ import { applyFilter, parseSort, sortRows } from "../filter.ts";
 import { ratePct } from "../format.ts";
 import { histogram, withRates } from "../stats.ts";
 import { histogramSvg } from "../svg.ts";
-import { PAGE, ministryOptions, nameCell, paged, select, summaryLine, yenCell } from "./common.ts";
+import { PAGE, ministryOptions, nameCell, paged, scroll, select, summaryLine, yenCell } from "./common.ts";
 
 type Tab = "short" | "over" | "none";
 
@@ -48,15 +48,13 @@ export function renderOutcomes(root: HTMLElement, rows: Row[], meta: Meta, param
       return h(
         "tr",
         {},
-        h("td", { class: "id" }, r.id),
         nameCell(r, meta),
-        h("td", {}, r.ministry),
         h("td", { class: "num" }, String(r.outcomes)),
         h("td", { class: "num" }, ratePct(mn)),
         h("td", { class: "num" }, ratePct(mx)),
         h("td", { class: "rates muted" }, r.rates.map((v) => ratePct(v)).join(" / ")),
         yenCell(r.initial),
-        h("td", {}, r.reflection),
+        h("td", { class: "refl" }, r.reflection),
       );
     },
     shown,
@@ -74,7 +72,7 @@ export function renderOutcomes(root: HTMLElement, rows: Row[], meta: Meta, param
     h("div", { class: "histwrap" }, raw(histogramSvg(bins))),
     tabBar,
     summaryLine(list.length, scoped.length),
-    h(
+    scroll(
       "table",
       { class: "rows" },
       h(
@@ -83,9 +81,7 @@ export function renderOutcomes(root: HTMLElement, rows: Row[], meta: Meta, param
         h(
           "tr",
           {},
-          h("th", {}, "ID"),
           h("th", {}, "事業名"),
-          h("th", {}, "府省庁"),
           h("th", { class: "num" }, "指標数"),
           h("th", { class: "num" }, "最小"),
           h("th", { class: "num" }, "最大"),

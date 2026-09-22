@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="{{.Root}}assets/style.css">
 </head>
 <body class="detail">
-<nav class="top"><a href="{{.Root}}index.html">← 一覧へ</a> <span class="brand">zailoop</span></nav>
+<nav class="top"><a href="{{.Root}}index.html">← 一覧へ</a> <span><a href="{{.Root}}terms.html">用語</a> <span class="brand">zailoop</span></span></nav>
 <header class="hero">
   <p class="org">{{.LC.Project.Ministry}}{{with .LC.Project.Bureau}} / {{.}}{{end}}{{with .LC.Project.Division}} / {{.}}{{end}}</p>
   <h1>{{.LC.Project.Name}}</h1>
@@ -117,17 +117,17 @@
 {{$n := .LC.ActualYear}}
 <h2 class="part">各段階の詳細 <small>シートの値（全桁）</small></h2>
 <section class="stage" id="s1"><h2>① 要求 <small>FY{{$n}} 概算要求</small></h2>
-  <dl><dt>要求額</dt><dd>{{if isOK .LC.Request.State}}{{yen .LC.Request.Amount}}{{else}}{{state .LC.Request.State}}{{end}}</dd></dl>
+  <dl><dt><a class="term" href="{{$.Root}}terms.html#{{termID "概算要求"}}">要求額</a></dt><dd>{{if isOK .LC.Request.State}}{{yen .LC.Request.Amount}}{{else}}{{state .LC.Request.State}}{{end}}</dd></dl>
 </section>
 
 <section class="stage" id="s2"><h2>② 成立 <small>FY{{$n}} 予算</small></h2>
   {{with .LC.Enacted}}{{if isOK .State}}
   <dl>
-    <dt>当初予算</dt><dd>{{yen .Initial}}</dd>
-    <dt>補正予算</dt><dd>{{yen .Supplementary}}</dd>
-    <dt>前年度繰越</dt><dd>{{yen .CarriedIn}}</dd>
-    <dt>予備費等</dt><dd>{{yen .Reserve}}</dd>
-    <dt>歳出予算現額</dt><dd>{{yen .Current}}</dd>
+    <dt><a class="term" href="{{$.Root}}terms.html#{{termID "当初予算"}}">当初予算</a></dt><dd>{{yen .Initial}}</dd>
+    <dt><a class="term" href="{{$.Root}}terms.html#{{termID "補正予算"}}">補正予算</a></dt><dd>{{yen .Supplementary}}</dd>
+    <dt><a class="term" href="{{$.Root}}terms.html#{{termID "前年度繰越"}}">前年度繰越</a></dt><dd>{{yen .CarriedIn}}</dd>
+    <dt><a class="term" href="{{$.Root}}terms.html#{{termID "予備費等"}}">予備費等</a></dt><dd>{{yen .Reserve}}</dd>
+    <dt><a class="term" href="{{$.Root}}terms.html#{{termID "歳出予算現額"}}">歳出予算現額</a></dt><dd>{{yen .Current}}</dd>
     {{if .Items}}<dt>内訳（予算種別）</dt><dd>{{range $i, $it := .Items}}{{if $i}}、{{end}}{{$it.Kind}} {{yen $it.Amount}}（{{$it.Count}}件）{{end}}</dd>{{end}}
   </dl>
   {{else}}<p class="muted">{{state .State}}</p>{{end}}{{end}}
@@ -136,8 +136,8 @@
 <section class="stage" id="s3"><h2>③ 執行 <small>FY{{$n}} 執行実績</small></h2>
   {{with .LC.Execution}}
   <dl>
-    {{if isOK .State}}<dt>執行額</dt><dd>{{yen .Executed}}</dd><dt>執行率</dt><dd>{{ratio .Rate}}</dd>
-    {{else if eq (state .State) "算出対象外"}}<dt>執行額</dt><dd>{{yen .Executed}} <span class="muted">（歳出予算現額が 0 以下。予算は別事業に計上の可能性）</span></dd><dt>執行率</dt><dd>—（算出対象外）</dd>
+    {{if isOK .State}}<dt><a class="term" href="{{$.Root}}terms.html#{{termID "執行額"}}">執行額</a></dt><dd>{{yen .Executed}}</dd><dt><a class="term" href="{{$.Root}}terms.html#{{termID "執行率"}}">執行率</a></dt><dd>{{ratio .Rate}}</dd>
+    {{else if eq (state .State) "算出対象外"}}<dt><a class="term" href="{{$.Root}}terms.html#{{termID "執行額"}}">執行額</a></dt><dd>{{yen .Executed}} <span class="muted">（歳出予算現額が 0 以下。予算は別事業に計上の可能性）</span></dd><dt><a class="term" href="{{$.Root}}terms.html#{{termID "執行率"}}">執行率</a></dt><dd>—（算出対象外）</dd>
     {{else}}<dt>執行</dt><dd>{{state .State}}</dd>{{end}}
   </dl>{{end}}
 </section>
@@ -145,8 +145,8 @@
 <section class="stage" id="s4"><h2>④ 決算 <small>FY{{$n}} 繰越・不用（不用相当額は 現額−執行−翌年度繰越 の導出値）</small></h2>
   {{with .LC.Settlement}}
   <dl>
-    <dt>翌年度繰越</dt><dd>{{yen .CarriedOut}}</dd>
-    <dt>不用相当額</dt><dd>{{if isOK .UnusedState}}{{yen .Unused}}{{else if eq (state .UnusedState) "要確認"}}算出不能／差額 {{yenSigned .Diff}}（要確認）{{else if eq (state .UnusedState) "算出対象外"}}—（算出対象外）{{else}}{{state .UnusedState}}{{end}}</dd>
+    <dt><a class="term" href="{{$.Root}}terms.html#{{termID "翌年度繰越"}}">翌年度繰越</a></dt><dd>{{yen .CarriedOut}}</dd>
+    <dt><a class="term" href="{{$.Root}}terms.html#{{termID "不用相当額"}}">不用相当額</a></dt><dd>{{if isOK .UnusedState}}{{yen .Unused}}{{else if eq (state .UnusedState) "要確認"}}算出不能／差額 {{yenSigned .Diff}}（要確認）{{else if eq (state .UnusedState) "算出対象外"}}—（算出対象外）{{else}}{{state .UnusedState}}{{end}}</dd>
   </dl>{{end}}
 </section>
 
@@ -156,7 +156,7 @@
     <dt>所管部局の点検</dt><dd>{{or .SelfCheck "（記載なし）"}}</dd>
     <dt>改善の方向性</dt><dd>{{or .Improvement "（記載なし）"}}</dd>
     <dt>外部有識者点検</dt><dd>{{or .ExternalTarget "（記載なし）"}}{{with .ExternalYear}}（最終実施 {{.}}年度）{{end}}{{with .ExternalOpinion}}<br><span class="sub">所見: {{.}}</span>{{end}}</dd>
-    <dt>推進チーム所見</dt><dd>{{or .TeamOpinion "（記載なし）"}}{{with .TeamOpinionDetail}}<br><span class="sub">{{.}}</span>{{end}}</dd>
+    <dt><a class="term" href="{{$.Root}}terms.html#{{termID "推進チーム所見"}}">推進チーム所見</a></dt><dd>{{or .TeamOpinion "（記載なし）"}}{{with .TeamOpinionDetail}}<br><span class="sub">{{.}}</span>{{end}}</dd>
   </dl>
   {{if .Outcomes}}
   <h3>成果指標（FY{{$n}}）</h3>
@@ -173,7 +173,7 @@
 <section class="stage" id="s6"><h2>⑥ 翌年度反映 <small>概算要求への反映と FY{{.LC.Reflection.RequestYear}} 要求</small></h2>
   {{with .LC.Reflection}}
   <dl>
-    <dt>反映状況</dt><dd>{{or .Status "（記載なし）"}}{{with .Detail}}<br><span class="sub">{{.}}</span>{{end}}</dd>
+    <dt><a class="term" href="{{$.Root}}terms.html#{{termID "反映状況"}}">反映状況</a></dt><dd>{{or .Status "（記載なし）"}}{{with .Detail}}<br><span class="sub">{{.}}</span>{{end}}</dd>
     {{if .ReflectedGeneral.Valid}}<dt>反映額（一般会計）</dt><dd>{{yen .ReflectedGeneral}}</dd>{{end}}
     {{range .ReflectedSpecial}}<dt>反映額（特別会計）</dt><dd>{{.Account}} {{.Subaccount}} {{yen .Amount}}</dd>{{end}}
     <dt>FY{{inc $n}} 当初予算（参考）</dt><dd>{{if isOK .NextInitialState}}{{yen .NextInitial}}{{else}}{{state .NextInitialState}}{{end}}</dd>

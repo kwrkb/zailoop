@@ -18,6 +18,12 @@ export interface Thresholds {
   OutcomeOvershoot: number;
 }
 
+export interface Term {
+  id: string;
+  name: string;
+  desc: string;
+}
+
 export interface Meta {
   sheetYear: number;
   actualYear: number;
@@ -31,6 +37,8 @@ export interface Meta {
   count: number;
   attribution: string;
   generated: string;
+  /** 用語の説明（terms.html と同じ） */
+  terms: Term[];
 }
 
 export interface RawRow {

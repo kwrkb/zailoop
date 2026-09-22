@@ -129,6 +129,7 @@ func BuildMulti(src MultiSource, out string, opt Options) (Stats, error) {
 	for name, fn := range map[string]func(io.Writer) error{
 		"index.html": func(w io.Writer) error { return writeIndex(w, p) },
 		"list.html":  func(w io.Writer) error { return writeList(w, p) },
+		"terms.html": writeTerms,
 	} {
 		n, err := writeFile(filepath.Join(out, name), fn)
 		if err != nil {

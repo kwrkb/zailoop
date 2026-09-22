@@ -47,6 +47,7 @@ var funcs = template.FuncMap{
 	},
 	"yenSigned": func(v int64) string { return render.YenValue(v) },
 	"yenShort":  render.YenShort,
+	"termID":    termID,
 	"inc":       func(n int) int { return n + 1 },
 	"verdict":   func(v lifecycle.LoopVerdict) string { return v.String() },
 	"verdictClass": func(v lifecycle.LoopVerdict) string {

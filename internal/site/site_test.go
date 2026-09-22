@@ -24,14 +24,14 @@ func TestBuild(t *testing.T) {
 	if st.Projects != 5 || st.Bytes == 0 {
 		t.Errorf("stats = %+v", st)
 	}
-	for _, f := range []string{"index.html", "list.html", "p/11.html", "p/884.html", "p/3522.html", "p/18556.html", "assets/style.css", "assets/app.js"} {
+	for _, f := range []string{"index.html", "list.html", "p/11.html", "p/884.html", "p/3522.html", "p/18556.html", "terms.html", "assets/style.css", "assets/app.js"} {
 		if _, err := os.Stat(filepath.Join(out, f)); err != nil {
 			t.Errorf("missing %s: %v", f, err)
 		}
 	}
 	detail, _ := os.ReadFile(filepath.Join(out, "p", "884.html"))
 	for _, want := range []string{"法教育の推進", "40,217,000 円", "縮減", "36,000,000 円", "24,844,000 円", "3,524,000 円", render.Attribution, "2026-09-22", `href="../index.html"`, `href="../assets/style.css"`,
-		"要点", `<ol class="flow">`, `href="#s6"`, `id="s6"`, "お金の内訳", "歳出予算現額", "兆候", "反映状況「縮減」"} {
+		"要点", `<ol class="flow">`, `href="#s6"`, `id="s6"`, "お金の内訳", "歳出予算現額", "兆候", "反映状況「縮減」", `href="../terms.html#current"`} {
 		if !strings.Contains(string(detail), want) {
 			t.Errorf("p/884.html missing %q", want)
 		}

@@ -3,7 +3,8 @@ import { h } from "../dom.ts";
 import { applyFilter, parseSort, sortRows } from "../filter.ts";
 import { yenFull } from "../format.ts";
 import { countSignals } from "../stats.ts";
-import { PAGE, badges, loopCell, ministryOptions, nameCell, paged, rateCell, select, sortOptions, summaryLineWithStale, yenCell } from "./common.ts";
+import { visibleColumns } from "../columns.ts";
+import { PAGE, amountCell, amountHead, badges, detailToggle, loopCell, ministryOptions, nameCell, paged, scroll, select, sortOptions, summaryLineWithStale, th } from "./common.ts";
 
 /** 閾値の説明文。判定は Go 側（zailoop build）で済んでいるので、ここでは表示するだけ。 */
 function thresholdText(code: string, meta: Meta): string {
@@ -30,6 +31,8 @@ export function renderGaps(root: HTMLElement, rows: Row[], meta: Meta, params: U
   const m = params.get("m") ?? "";
   const sort = parseSort(params.get("sort"), "signals", "desc");
   const shown = Number(params.get("n") ?? PAGE) || PAGE;
+  const showAll = params.get("cols") === "all";
+  const cols = visibleColumns(showAll, sort.key);
   const multi = meta.sheetYears.length > 1;
   const set = (k: string, v: string) => {
     const p = new URLSearchParams(params);
@@ -80,6 +83,7 @@ export function renderGaps(root: HTMLElement, rows: Row[], meta: Meta, params: U
       (v) => set("mode", v),
     ),
     select("sort", sortOptions([{ value: "signals:desc", label: "兆候の数 多い順" }]), `${sort.key}:${sort.dir}`, (v) => set("sort", v)),
+    detailToggle(showAll, (v) => set("cols", v ? "all" : "")),
     selected.length ? h("button", { type: "button", onclick: () => set("sig", "") }, "選択を解除") : null,
   );
 
@@ -89,17 +93,10 @@ export function renderGaps(root: HTMLElement, rows: Row[], meta: Meta, params: U
       h(
         "tr",
         {},
-        h("td", { class: "id" }, r.id),
         nameCell(r, meta),
-        h("td", {}, r.ministry),
         badges(r, meta),
-        yenCell(r.request),
-        yenCell(r.initial),
-        yenCell(r.current),
-        yenCell(r.executed),
-        rateCell(r),
-        yenCell(r.unused, r.unusedState ? "muted" : ""),
-        h("td", {}, r.reflection),
+        ...cols.map((col) => amountCell(col, r)),
+        h("td", { class: "refl" }, r.reflection),
         ...(multi ? [loopCell(r)] : []),
       ),
     shown,
@@ -116,7 +113,7 @@ export function renderGaps(root: HTMLElement, rows: Row[], meta: Meta, params: U
     tiles,
     controls,
     summaryLineWithStale(filtered.length, scoped.length, filtered, meta),
-    h(
+    scroll(
       "table",
       { class: "rows" },
       h(
@@ -125,18 +122,11 @@ export function renderGaps(root: HTMLElement, rows: Row[], meta: Meta, params: U
         h(
           "tr",
           {},
-          h("th", {}, "ID"),
           h("th", {}, "事業名"),
-          h("th", {}, "府省庁"),
-          h("th", {}, "兆候"),
-          h("th", { class: "num" }, "① 要求"),
-          h("th", { class: "num" }, "② 当初"),
-          h("th", { class: "num" }, "② 現額"),
-          h("th", { class: "num" }, "③ 執行"),
-          h("th", {}, "③ 執行率"),
-          h("th", { class: "num" }, "④ 不用相当"),
-          h("th", {}, "⑥ 反映"),
-          ...(multi ? [h("th", {}, "前年反映→当初")] : []),
+          th("兆候", meta, "兆候"),
+          ...cols.map((col) => amountHead(col, meta)),
+          th("⑥ 反映", meta, "反映状況"),
+          ...(multi ? [th("前年反映→当初", meta, "ループ検証")] : []),
         ),
       ),
       tbody,

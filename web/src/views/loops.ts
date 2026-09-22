@@ -3,7 +3,7 @@ import { h } from "../dom.ts";
 import { applyFilter, parseSort, sortRows } from "../filter.ts";
 import { crosstab } from "../stats.ts";
 import { withParams } from "../state.ts";
-import { PAGE, badges, loopCell, ministryOptions, nameCell, paged, select, sortOptions, summaryLine, yenCell } from "./common.ts";
+import { PAGE, badges, loopCell, ministryOptions, nameCell, paged, scroll, select, sortOptions, summaryLine, th, yenCell } from "./common.ts";
 
 const ORDER = ["縮減", "廃止", "終了予定", "執行等改善", "年度内に改善を検討", "現状通り", "(空)"];
 
@@ -78,14 +78,12 @@ export function renderLoops(root: HTMLElement, rows: Row[], meta: Meta, params: 
       h(
         "tr",
         {},
-        h("td", { class: "id" }, r.id),
         nameCell(r, meta),
-        h("td", {}, r.ministry),
         loopCell(r),
         yenCell(r.prevInitial),
         yenCell(r.nextInitial),
-        h("td", { class: r.verdict === 3 ? "bad" : r.verdict === 2 ? "good" : "muted" }, VERDICT_LABEL[r.verdict] ?? ""),
-        h("td", {}, r.reflection),
+        h("td", { class: `verdict ${r.verdict === 3 ? "bad" : r.verdict === 2 ? "good" : "muted"}` }, VERDICT_LABEL[r.verdict] ?? ""),
+        h("td", { class: "refl" }, r.reflection),
         badges(r, meta),
       ),
     shown,
@@ -102,7 +100,7 @@ export function renderLoops(root: HTMLElement, rows: Row[], meta: Meta, params: 
     controls,
     table,
     summaryLine(list.length, scoped.length),
-    h(
+    scroll(
       "table",
       { class: "rows" },
       h(
@@ -111,13 +109,11 @@ export function renderLoops(root: HTMLElement, rows: Row[], meta: Meta, params: 
         h(
           "tr",
           {},
-          h("th", {}, "ID"),
           h("th", {}, "事業名"),
-          h("th", {}, "府省庁"),
           h("th", {}, `${prevYear} 反映 → 当初`),
           h("th", { class: "num" }, `FY${prevYear} 当初`),
           h("th", { class: "num" }, `FY${prevYear + 1} 当初`),
-          h("th", {}, "判定"),
+          th("判定", meta, "ループ検証"),
           h("th", {}, `${prevYear + 1} 反映`),
           h("th", {}, "兆候"),
         ),

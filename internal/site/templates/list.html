@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="list">
-<nav class="top"><a href="index.html">← ダッシュボード</a> <span class="muted">zailoop</span></nav>
+<nav class="top"><a href="index.html">← ダッシュボード</a> <span><a href="terms.html">用語</a> <span class="brand">zailoop</span></span></nav>
 <h1>事業一覧（府省庁別） <small class="muted">{{.Meta.SheetYear}}年度シート {{.Meta.Count}} 事業</small></h1>
 <p class="muted">JavaScript なしで辿れる一覧です。検索・絞り込みは <a href="index.html">ダッシュボード</a> を使ってください。</p>
 <ul class="toc">{{range .Groups}}<li><a href="#m-{{.Ministry}}">{{.Ministry}}</a> <span class="muted">({{len .Rows}})</span></li>{{end}}</ul>

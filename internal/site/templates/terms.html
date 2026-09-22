@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>用語の説明 | zailoop</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body class="terms">
+<nav class="top"><a href="index.html">← 一覧へ</a> <span class="brand">zailoop</span></nav>
+<h1>用語の説明</h1>
+<p class="muted">このサイトでの意味です。シートの列名を添えています。「このサイトが」とあるものは zailoop が導出・判定した値で、シートにはありません。</p>
+<dl class="glossary">
+{{range .Terms}}<dt id="{{.ID}}">{{.Name}}</dt><dd>{{.Desc}}</dd>
+{{end}}</dl>
+<footer><p>{{.Attribution}}</p></footer>
+</body>
+</html>
