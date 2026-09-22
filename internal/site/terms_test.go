@@ -26,8 +26,11 @@ func TestTerms(t *testing.T) {
 	if err := writeTerms(&buf); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`<dt id="unused">不用相当額</dt>`, "決算上の不用額そのものではない", render.Attribution} {
-		if !strings.Contains(buf.String(), want) {
+	if !strings.Contains(buf.String(), `<dt id="unused">不用相当額</dt>`) {
+		t.Error("terms.html missing anchor for 不用相当額")
+	}
+	for _, want := range []string{"決算上の不用額そのものではない", render.Attribution, render.Disclaimer} {
+		if !strings.Contains(visibleText(buf.String()), want) {
 			t.Errorf("terms.html missing %q", want)
 		}
 	}

@@ -235,7 +235,7 @@ func digest(tl *lifecycle.Timeline) []string {
 	if len(tl.Loops) >= 2 {
 		lp := tl.Loops[len(tl.Loops)-2]
 		if lp.Closed && lp.Verdict != lifecycle.VerdictUnknown {
-			loop = fmt.Sprintf("ループ検証: %d年度シートの反映「%s」に対し、FY%d 当初は %s → FY%d 当初 %s", lp.SheetYear, orText(lp.Reflection, "記載なし"), lp.SheetYear, render.YenShort(lp.Initial), lp.SheetYear+1, render.YenShort(lp.NextInitial))
+			loop = fmt.Sprintf("ループ検証（このサイト独自の判定）: %d年度シートの反映「%s」に対し、FY%d 当初は %s → FY%d 当初 %s", lp.SheetYear, orText(lp.Reflection, "記載なし"), lp.SheetYear, render.YenShort(lp.Initial), lp.SheetYear+1, render.YenShort(lp.NextInitial))
 			if d, ok := change(lp.Initial, lp.NextInitial); ok {
 				loop += "（" + d + "）"
 			}

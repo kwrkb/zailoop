@@ -45,11 +45,12 @@ var funcs = template.FuncMap{
 		}
 		return v
 	},
-	"yenSigned": func(v int64) string { return render.YenValue(v) },
-	"yenShort":  render.YenShort,
-	"termID":    termID,
-	"inc":       func(n int) int { return n + 1 },
-	"verdict":   func(v lifecycle.LoopVerdict) string { return v.String() },
+	"yenSigned":  func(v int64) string { return render.YenValue(v) },
+	"yenShort":   render.YenShort,
+	"termID":     termID,
+	"disclaimer": func() string { return render.Disclaimer },
+	"inc":        func(n int) int { return n + 1 },
+	"verdict":    func(v lifecycle.LoopVerdict) string { return v.String() },
 	"verdictClass": func(v lifecycle.LoopVerdict) string {
 		switch v {
 		case lifecycle.VerdictContradiction:
@@ -94,7 +95,6 @@ type detailData struct {
 	YearBars    []yearBar
 	Badges      []badge
 	Generated   string
-	Attribution string
 	Root        string // index.html への相対パス（"../"）
 }
 
@@ -124,7 +124,7 @@ func writeDetail(w io.Writer, tl *lifecycle.Timeline, sm lifecycle.Summary, th l
 		LC: lc, TL: tl, Multi: len(tl.SheetYears) > 1, Summary: sm,
 		Digest: digest(tl), Flow: flowSteps(lc, sm), WfIn: wfIn, WfOut: wfOut, WfNote: wfNote,
 		YearBars: ybars, Badges: signalBadges(tl, sm.Signals, th),
-		Generated: generated, Attribution: render.Attribution, Root: "../",
+		Generated: generated, Root: "../",
 	})
 }
 

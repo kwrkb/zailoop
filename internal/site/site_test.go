@@ -2,8 +2,10 @@ package site
 
 import (
 	"encoding/json"
+	"html"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -11,6 +13,11 @@ import (
 	"github.com/kwrkb/zailoop/internal/render"
 	"github.com/kwrkb/zailoop/internal/rs"
 )
+
+var tagRe = regexp.MustCompile(`<[^>]*>`)
+
+// visibleText はタグを除き、実体参照を戻した本文。出典の文言がリンク付きでも一致を確かめられる。
+func visibleText(s string) string { return html.UnescapeString(tagRe.ReplaceAllString(s, "")) }
 
 func TestBuild(t *testing.T) {
 	out := t.TempDir()
@@ -30,10 +37,19 @@ func TestBuild(t *testing.T) {
 		}
 	}
 	detail, _ := os.ReadFile(filepath.Join(out, "p", "884.html"))
-	for _, want := range []string{"法教育の推進", "40,217,000 円", "縮減", "36,000,000 円", "24,844,000 円", "3,524,000 円", render.Attribution, "2026-09-22", `href="../index.html"`, `href="../assets/style.css"`,
+	for _, want := range []string{"法教育の推進", "40,217,000 円", "縮減", "36,000,000 円", "24,844,000 円", "3,524,000 円", "2026-09-22", `href="../index.html"`, `href="../assets/style.css"`,
 		"要点", `<ol class="flow">`, `href="#s6"`, `id="s6"`, "お金の内訳", "歳出予算現額", "兆候", "反映状況「縮減」", `href="../terms.html#current"`} {
 		if !strings.Contains(string(detail), want) {
 			t.Errorf("p/884.html missing %q", want)
+		}
+	}
+	for _, f := range []string{"p/884.html", "index.html", "list.html", "terms.html"} {
+		b, _ := os.ReadFile(filepath.Join(out, f))
+		if txt := visibleText(string(b)); !strings.Contains(txt, render.Attribution) || !strings.Contains(txt, render.Disclaimer) {
+			t.Errorf("%s: attribution or disclaimer missing", f)
+		}
+		if !strings.Contains(string(b), `href="https://rssystem.go.jp/"`) {
+			t.Errorf("%s: missing link to the data source", f)
 		}
 	}
 	zero, _ := os.ReadFile(filepath.Join(out, "p", "11.html"))
@@ -42,9 +58,6 @@ func TestBuild(t *testing.T) {
 	}
 	index, _ := os.ReadFile(filepath.Join(out, "index.html"))
 	s := string(index)
-	if !strings.Contains(s, render.Attribution) {
-		t.Errorf("index missing attribution")
-	}
 	i := strings.Index(s, `<script id="zailoop-data" type="application/json">`)
 	if i < 0 {
 		t.Fatal("index missing data script")

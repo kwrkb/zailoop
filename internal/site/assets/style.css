@@ -118,3 +118,4 @@ a.term:hover { color:var(--link); }
 .glossary { grid-template-columns:minmax(8em, max-content) 1fr; gap:10px 24px; margin-top:16px; }
 .glossary dt { font-weight:600; color:var(--fg); white-space:normal; }
 .glossary dt:target, .glossary dt:target + dd { background:var(--accent-bg); }
+footer .credit { margin:0 0 4px; } footer .disclaimer { margin:0 0 4px; }

@@ -199,9 +199,8 @@ func nonNil(s []string) []string {
 
 // indexData は index.html に渡すデータ。
 type indexData struct {
-	JSON        template.JS
-	Meta        Meta
-	Attribution string
+	JSON template.JS
+	Meta Meta
 }
 
 // writeIndex は一覧ページを書く。JSON は encoding/json の既定エスケープ（< > & を \u 化）で
@@ -213,7 +212,7 @@ func writeIndex(w io.Writer, p Payload) error {
 	if err := enc.Encode(p); err != nil {
 		return err
 	}
-	return templates.ExecuteTemplate(w, "index.html", indexData{JSON: template.JS(bytes.TrimSpace(buf.Bytes())), Meta: p.Meta, Attribution: render.Attribution})
+	return templates.ExecuteTemplate(w, "index.html", indexData{JSON: template.JS(bytes.TrimSpace(buf.Bytes())), Meta: p.Meta})
 }
 
 // listGroup は list.html の府省庁ごとのまとまり。
@@ -223,9 +222,8 @@ type listGroup struct {
 }
 
 type listData struct {
-	Meta        Meta
-	Groups      []listGroup
-	Attribution string
+	Meta   Meta
+	Groups []listGroup
 }
 
 // writeList は JS なしで全事業へ辿れる一覧を書く。
@@ -240,5 +238,5 @@ func writeList(w io.Writer, p Payload) error {
 		sort.SliceStable(rows, func(a, b int) bool { return rows[a].ID < rows[b].ID })
 		groups = append(groups, listGroup{Ministry: m, Rows: rows})
 	}
-	return templates.ExecuteTemplate(w, "list.html", listData{Meta: p.Meta, Groups: groups, Attribution: render.Attribution})
+	return templates.ExecuteTemplate(w, "list.html", listData{Meta: p.Meta, Groups: groups})
 }

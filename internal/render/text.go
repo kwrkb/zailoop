@@ -13,8 +13,14 @@ import (
 	"github.com/kwrkb/zailoop/internal/rs"
 )
 
-// Attribution は出力に必ず含める出典表記。
-const Attribution = "出典: 行政事業レビュー見える化サイト（内閣官房行政改革推進本部事務局）のデータを加工して作成"
+// Attribution は出力に必ず含める出典表記。公共データ利用規約（PDL1.0）の求める
+// 出典・加工したこと・加工の主体と、推奨されるデータの URL・規約名を入れる。
+// HTML では internal/site/templates/partials.html の "credit" が同じ文言をリンク付きで出す。
+const Attribution = "出典: 行政事業レビュー見える化サイトのデータを加工して作成（加工: zailoop / kwrkb）。データ: https://rssystem.go.jp/ 、公共データ利用規約 第1.0版（PDL1.0）"
+
+// Disclaimer は出典と並べて出す注記。加工した情報を国が作成したかのように見せないため
+// （見える化サイトの利用規約）、非公式であることと、独自の判定であることを明示する。
+const Disclaimer = "zailoop は非公式のツールで、国や府省庁が作成したものではありません。兆候とループ検証は zailoop 独自の判定です。"
 
 // Text は 1 事業のライフサイクルをテキストで書き出す。
 func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
@@ -153,6 +159,7 @@ func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 	}
 	p.f("")
 	p.f("%s", Attribution)
+	p.f("%s", Disclaimer)
 	return p.err
 }
 

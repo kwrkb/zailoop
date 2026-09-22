@@ -96,7 +96,7 @@ export function renderLoops(root: HTMLElement, rows: Row[], meta: Meta, params: 
 
   root.replaceChildren(
     h("h2", {}, "ループ検証", h("small", { class: "muted" }, ` ${prevYear}年度シートの「概算要求への反映状況」が、${prevYear + 1}年度シートの当初予算にどう現れたか`)),
-    h("p", { class: "muted" }, `比較は FY${prevYear} 当初（${prevYear}年度シート）と FY${prevYear + 1} 当初（${prevYear + 1}年度シート）。縮減・廃止・終了予定なのに増額なら「矛盾」。`),
+    h("p", { class: "muted" }, `比較は FY${prevYear} 当初（${prevYear}年度シート）と FY${prevYear + 1} 当初（${prevYear + 1}年度シート）。縮減・廃止・終了予定なのに増額なら「矛盾」。このサイト独自の判定で、公式の評価ではありません。`),
     controls,
     table,
     summaryLine(list.length, scoped.length),

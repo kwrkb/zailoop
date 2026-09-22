@@ -15,6 +15,6 @@
 <h2 id="m-{{.Ministry}}">{{.Ministry}} <small>{{len .Rows}} 事業</small></h2>
 <ul>{{range .Rows}}<li><a href="p/{{.ID}}.html">{{.ID}} {{.Name}}</a></li>{{end}}</ul>
 {{end}}
-<footer><p>{{.Attribution}}</p><p class="muted">生成: {{.Meta.Generated}}</p></footer>
+<footer>{{template "credit"}}<p class="muted">生成: {{.Meta.Generated}}</p></footer>
 </body>
 </html>

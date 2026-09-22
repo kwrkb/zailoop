@@ -109,7 +109,7 @@ export function renderGaps(root: HTMLElement, rows: Row[], meta: Meta, params: U
 
   root.replaceChildren(
     h("h2", {}, "ループの断絶を探す", h("small", { class: "muted" }, " 要求→成立→執行→決算→評価→反映のどこかで整合しない事業")),
-    h("p", { class: "muted" }, "判定は生成時に行っています。閾値を変えるには zailoop build の引数を使ってください。"),
+    h("p", { class: "muted" }, "このサイト独自の判定で、公式の評価ではありません。判定は生成時に行っていて、閾値は zailoop build の引数で変えられます。"),
     tiles,
     controls,
     summaryLineWithStale(filtered.length, scoped.length, filtered, meta),

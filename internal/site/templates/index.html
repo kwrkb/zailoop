@@ -16,7 +16,7 @@
 <noscript><p>JavaScript が無効です。事業一覧は <a href="list.html">list.html</a> を参照してください。</p></noscript>
 <main id="app"></main>
 <footer>
-  <p>{{.Attribution}}</p>
+  {{template "credit"}}
   <p class="muted">生成: {{.Meta.Generated}} ／ 数値は円。「FY」は予算年度。</p>
 </footer>
 <script id="zailoop-data" type="application/json">{{.JSON}}</script>

@@ -3,8 +3,6 @@ package site
 import (
 	"fmt"
 	"io"
-
-	"github.com/kwrkb/zailoop/internal/render"
 )
 
 // Term は用語の説明 1 件。terms.html・詳細ページのリンク・一覧の見出し（Meta.Terms）の唯一の源。
@@ -56,11 +54,10 @@ func termID(name string) (string, error) {
 }
 
 type termsData struct {
-	Terms       []Term
-	Attribution string
+	Terms []Term
 }
 
 // writeTerms は用語の説明ページを書く。
 func writeTerms(w io.Writer) error {
-	return templates.ExecuteTemplate(w, "terms.html", termsData{Terms: Terms, Attribution: render.Attribution})
+	return templates.ExecuteTemplate(w, "terms.html", termsData{Terms: Terms})
 }

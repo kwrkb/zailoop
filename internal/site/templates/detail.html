@@ -32,7 +32,7 @@
 
 {{if .Badges}}
 <section class="signals" aria-labelledby="signals-h">
-  <h2 id="signals-h">兆候 <small>生成時の判定。閾値は zailoop build の引数で変えられます</small></h2>
+  <h2 id="signals-h">兆候 <small>このサイト独自の判定で、公式の評価ではありません。閾値は zailoop build の引数で変えられます</small></h2>
   <ul>{{range .Badges}}<li><span class="badge" title="{{.Description}}">{{.Label}}</span>{{with .Evidence}} <span class="evidence">{{.}}</span>{{end}}</li>{{end}}</ul>
 </section>
 {{end}}
@@ -196,7 +196,7 @@
 {{end}}
 
 <footer>
-  <p>{{.Attribution}}</p>
+  {{template "credit"}}
   <p class="muted">生成: {{.Generated}} ／ 数値は円。「FY」は予算年度。</p>
 </footer>
 </body>

@@ -35,8 +35,9 @@ npx wrangler deploy                               # https://zailoop.kwrkb.worker
 
 ## データ出典
 
-行政事業レビュー見える化サイト（内閣官房行政改革推進本部事務局）のデータを加工して作成しています。
-配布データは公共データ利用規約（PDL1.0）に基づいて利用しています。本リポジトリは公式サイトとは無関係です。
+行政事業レビュー見える化サイト（https://rssystem.go.jp/ ）のデータを zailoop（kwrkb）が加工して作成しています。
+配布データは[公共データ利用規約 第1.0版（PDL1.0）](https://www.digital.go.jp/resources/open_data/public_data_license_v1.0)に基づいて利用しています。
+本リポジトリと生成したサイトは非公式で、国や府省庁が作成したものではありません。兆候とループ検証は zailoop 独自の判定です。
 
 取得した CSV・ZIP はリポジトリに含めません（`data/` は `.gitignore`）。`testdata/` にはテスト用に 4 事業分だけ抜粋しています。
 

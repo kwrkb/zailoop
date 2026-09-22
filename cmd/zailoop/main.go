@@ -38,6 +38,7 @@ const usage = `zailoop: 予算事業のライフサイクル（要求→成立�
 
 データは <data>/raw/ に ZIP、<data>/csv/ に CSV として置く。
 ` + render.Attribution + `
+` + render.Disclaimer + `
 `
 
 func main() {
