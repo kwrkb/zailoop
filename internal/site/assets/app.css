@@ -35,3 +35,29 @@ table.cross td.on button, table.cross tr.on th button { font-weight: bold; color
 td.loop .arrow { color: var(--muted); } td.loop.bad .arrow, td.bad { color: var(--neg); font-weight: bold; } td.loop.good .arrow, td.good { color: var(--good); }
 td.name .stale { display: inline-block; margin-left: 6px; font-size: 0.75rem; color: var(--badgefg); background: var(--badge); border-radius: 999px; padding: 0 8px; }
 @media (max-width: 600px) { table.rows td.name { min-width: 11em; } table.rows th, table.rows td { padding: 6px 6px; } }
+
+/* 概要（一覧の上） */
+.overview { margin: 8px 0 28px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 12px 0 8px; }
+.stat { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: inherit; text-decoration: none; }
+a.stat:hover, a.stat:focus-visible { border-color: var(--accent); }
+.stat .label { font-size: 0.8rem; color: var(--muted); }
+.stat .value { font-size: 1.5rem; line-height: 1.3; font-variant-numeric: tabular-nums; }
+.stat .note { font-size: 0.78rem; color: var(--muted); }
+a.stat .note { color: var(--link); }
+.overview h3 { margin: 20px 0 6px; }
+.ministries { display: grid; gap: 2px; }
+.ministry { display: grid; grid-template-columns: 12em minmax(0, 1fr) 6.5em 14em; align-items: center; gap: 10px; padding: 4px 8px; font: inherit; font-size: 0.9rem; color: inherit; text-align: left; background: none; border: 1px solid transparent; border-radius: 6px; cursor: pointer; }
+.ministry:hover { background: var(--surface2); } .ministry.on { border-color: var(--accent); background: var(--accent-bg); }
+.ministry svg.bar { height: 10px; } .ministry svg.bar rect { fill: var(--accent-soft); } .ministry.on svg.bar rect { fill: var(--accent); }
+.ministry .mval { text-align: right; font-variant-numeric: tabular-nums; }
+.ministry .msig { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.linklike { font: inherit; font-size: 0.9rem; background: none; border: none; padding: 4px 8px; color: var(--link); cursor: pointer; text-decoration: underline; }
+.scroll-hint { display: none; margin: 0 0 4px; font-size: 0.8rem; color: var(--muted); text-align: right; }
+@media (max-width: 600px) {
+  .scroll-hint { display: block; }
+  .ministry { grid-template-columns: minmax(0, 1fr) 5.5em; grid-template-areas: "n v" "b b" "s s"; gap: 2px 8px; padding: 6px 8px; }
+  .ministry .mname { grid-area: n; } .ministry .mval { grid-area: v; } .ministry svg.bar { grid-area: b; } .ministry .msig { grid-area: s; }
+  .stat .value { font-size: 1.25rem; }
+}
+.overview .note { font-size: 0.8rem; margin: 0 0 6px; }

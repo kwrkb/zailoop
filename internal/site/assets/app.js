@@ -230,6 +230,37 @@
     const keys = [...order.filter((k) => m.has(k)), ...[...m.keys()].filter((k) => !order.includes(k))];
     return keys.map((k) => m.get(k));
   }
+  function overview(rows, sheetYear) {
+    const o = { projects: rows.length, onAxis: 0, initial: 0, current: 0, executed: 0, execRate: null, withSignals: 0, contradictions: 0 };
+    let rc = 0;
+    let re = 0;
+    for (const r of rows) {
+      if (r.signalCodes.length > 0) o.withSignals++;
+      if (r.verdict === 3) o.contradictions++;
+      if (r.sheetYear !== sheetYear) continue;
+      o.onAxis++;
+      o.initial += r.initial ?? 0;
+      o.current += r.current ?? 0;
+      o.executed += r.executed ?? 0;
+      if (!r.execState && r.current !== null && r.current > 0 && r.executed !== null) {
+        rc += r.current;
+        re += r.executed;
+      }
+    }
+    o.execRate = rc > 0 ? re / rc : null;
+    return o;
+  }
+  function ministryTotals(rows, sheetYear) {
+    const m = /* @__PURE__ */ new Map();
+    for (const r of rows) {
+      const t = m.get(r.ministry) ?? { ministry: r.ministry, count: 0, initial: 0, withSignals: 0 };
+      t.count++;
+      if (r.signalCodes.length > 0) t.withSignals++;
+      if (r.sheetYear === sheetYear) t.initial += r.initial ?? 0;
+      m.set(r.ministry, t);
+    }
+    return [...m.values()].sort((a, b) => b.initial - a.initial || b.count - a.count);
+  }
 
   // src/columns.ts
   var AMOUNT_COLS = ["request", "initial", "current", "executed", "execRate", "unused", "nextRequest"];
@@ -283,7 +314,7 @@
     return h("td", { class: "name" }, top, sub);
   }
   function scroll(tag, attrs, ...children) {
-    return h("div", { class: "tablewrap" }, h(tag, attrs, ...children));
+    return h("div", {}, h("p", { class: "scroll-hint" }, "\u8868\u306F\u6A2A\u306B\u30B9\u30AF\u30ED\u30FC\u30EB\u3067\u304D\u307E\u3059 \u2192"), h("div", { class: "tablewrap" }, h(tag, attrs, ...children)));
   }
   function th(label, meta, term = "", cls = "") {
     const t = term ? meta.terms.find((x) => x.name === term) : void 0;
@@ -527,6 +558,63 @@
     );
   }
 
+  // src/views/overview.ts
+  var TOP = 10;
+  function renderOverview(rows, meta, params, update) {
+    const o = overview(rows, meta.sheetYear);
+    const n2 = meta.actualYear;
+    const multi = meta.sheetYears.length > 1;
+    const cur = params.get("m") ?? "";
+    const all = params.get("mall") === "1";
+    const set = (changes) => {
+      const p = new URLSearchParams(params);
+      for (const [k, v] of Object.entries(changes)) {
+        if (v) p.set(k, v);
+        else p.delete(k);
+      }
+      p.delete("n");
+      update(p);
+    };
+    const num = (v) => v.toLocaleString("ja-JP");
+    const stat = (label, value, note, href = "", title = "") => h(href ? "a" : "div", { class: "stat", ...href ? { href } : {}, ...title ? { title } : {} }, h("span", { class: "label" }, label), h("strong", { class: "value" }, value), h("span", { class: "note" }, note));
+    const stats = h(
+      "div",
+      { class: "stats" },
+      stat("\u4E8B\u696D\u6570", num(o.projects), o.onAxis < o.projects ? `\u91D1\u984D\u306E\u5408\u8A08\u306F FY${n2} \u8EF8\u306E ${num(o.onAxis)} \u4E8B\u696D` : `${meta.sheetYear}\u5E74\u5EA6\u30B7\u30FC\u30C8`),
+      stat(`FY${n2} \u5F53\u521D\u4E88\u7B97`, yenShort(o.initial), "\u4E8B\u696D\u3054\u3068\u306E\u5024\u306E\u5358\u7D14\u5408\u8A08\uFF08\u56FD\u306E\u4E88\u7B97\u7DCF\u984D\u3068\u306F\u4E00\u81F4\u3057\u306A\u3044\uFF09", "", yenFull(o.initial)),
+      stat(`FY${n2} \u57F7\u884C\u7387`, pct(o.execRate), `\u57F7\u884C ${yenShort(o.executed)} \uFF0F \u73FE\u984D ${yenShort(o.current)}`, "", "\u57F7\u884C\u984D\u306E\u5408\u8A08 \xF7 \u6B73\u51FA\u4E88\u7B97\u73FE\u984D\u306E\u5408\u8A08\uFF08\u73FE\u984D\u304C 0 \u4EE5\u4E0B\u306E\u4E8B\u696D\u3092\u9664\u304F\uFF09"),
+      stat("\u5146\u5019\u306E\u3042\u308B\u4E8B\u696D", num(o.withSignals), `\u5168\u4F53\u306E ${pct(o.projects ? o.withSignals / o.projects : null, 0)} \u2192 \u65AD\u7D76\u3092\u63A2\u3059`, "#gaps"),
+      multi ? stat("\u30EB\u30FC\u30D7\u691C\u8A3C\u3067\u300C\u77DB\u76FE\u300D", num(o.contradictions), "\u53CD\u6620\u3068\u9006\u306B\u5897\u984D \u2192 \u30EB\u30FC\u30D7\u691C\u8A3C", "#loops?v=3") : null
+    );
+    const totals = ministryTotals(rows, meta.sheetYear);
+    const max = Math.max(1, ...totals.map((t) => t.initial));
+    const shown = all ? totals : totals.filter((t, i) => i < TOP || t.ministry === cur);
+    const list = h("div", { class: "ministries" });
+    for (const t of shown) {
+      const on = t.ministry === cur;
+      list.appendChild(
+        h(
+          "button",
+          { type: "button", class: `ministry ${on ? "on" : ""}`, title: `${t.ministry} \u3067\u4E00\u89A7\u3092\u7D5E\u308A\u8FBC\u3080`, onclick: () => set({ m: on ? null : t.ministry }) },
+          h("span", { class: "mname" }, t.ministry),
+          raw(bar(t.initial / max)),
+          h("span", { class: "mval", title: yenFull(t.initial) }, yenShort(t.initial)),
+          h("span", { class: "msig" }, `${pct(o.initial ? t.initial / o.initial : null)}\u30FB${num(t.count)} \u4E8B\u696D\u30FB\u5146\u5019 ${num(t.withSignals)}`)
+        )
+      );
+    }
+    const more = totals.length > TOP ? h("button", { type: "button", class: "linklike", onclick: () => set({ mall: all ? null : "1" }) }, all ? "\u4E0A\u4F4D\u3060\u3051\u8868\u793A" : `\u6B8B\u308A ${totals.length - shown.length} \u5E9C\u7701\u5E81\u3082\u8868\u793A`) : null;
+    return h(
+      "section",
+      { class: "overview" },
+      stats,
+      h("h3", {}, `\u5E9C\u7701\u5E81\u5225\u306E FY${n2} \u5F53\u521D\u4E88\u7B97`, h("small", { class: "muted" }, " \u62BC\u3059\u3068\u4E00\u89A7\u3092\u305D\u306E\u5E9C\u7701\u5E81\u3067\u7D5E\u308A\u8FBC\u307F\u307E\u3059")),
+      h("p", { class: "note muted" }, "\u4E00\u822C\u4F1A\u8A08\u3068\u7279\u5225\u4F1A\u8A08\u306E\u4E8B\u696D\u3092\u5358\u7D14\u306B\u8DB3\u3057\u305F\u5024\u3067\u3059\u3002\u4F1A\u8A08\u9593\u306E\u7E70\u5165\u308C\u3067\u91CD\u8907\u3057\u3046\u308B\u305F\u3081\u3001\u56FD\u306E\u4E88\u7B97\u7DCF\u984D\u3068\u306F\u4E00\u81F4\u3057\u307E\u305B\u3093\u3002\u68D2\u306E\u9577\u3055\u306F\u91D1\u984D\u306B\u6BD4\u4F8B\u3057\u307E\u3059\u3002"),
+      list,
+      more
+    );
+  }
+
   // src/views/list.ts
   function renderList(root, rows, meta, params, update) {
     const q = params.get("q") ?? "";
@@ -578,6 +666,7 @@
       }
     );
     root.replaceChildren(
+      renderOverview(rows, meta, params, update),
       h("h2", {}, "\u4E00\u89A7", h("small", { class: "muted" }, ` FY${meta.actualYear} \u3092\u8EF8\u306B\u3057\u305F\u91D1\u984D\u3002\u898B\u51FA\u3057\u306E\u70B9\u7DDA\u306F\u7528\u8A9E\u306E\u8AAC\u660E`)),
       controls,
       summaryLineWithStale(filtered.length, rows.length, filtered, meta),

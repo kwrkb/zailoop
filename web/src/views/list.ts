@@ -2,6 +2,7 @@ import type { Meta, Row } from "../data.ts";
 import { h } from "../dom.ts";
 import { applyFilter, parseSort, sortRows } from "../filter.ts";
 import { visibleColumns } from "../columns.ts";
+import { renderOverview } from "./overview.ts";
 import { PAGE, amountCell, amountHead, badges, detailToggle, loopCell, ministryOptions, nameCell, paged, select, sortOptions, scroll, summaryLineWithStale, th } from "./common.ts";
 
 export function renderList(root: HTMLElement, rows: Row[], meta: Meta, params: URLSearchParams, update: (p: URLSearchParams) => void) {
@@ -59,6 +60,7 @@ export function renderList(root: HTMLElement, rows: Row[], meta: Meta, params: U
   );
 
   root.replaceChildren(
+    renderOverview(rows, meta, params, update),
     h("h2", {}, "一覧", h("small", { class: "muted" }, ` FY${meta.actualYear} を軸にした金額。見出しの点線は用語の説明`)),
     controls,
     summaryLineWithStale(filtered.length, rows.length, filtered, meta),

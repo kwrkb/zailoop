@@ -25,7 +25,7 @@ export function nameCell(r: Row, meta?: Meta): HTMLElement {
 
 /** 横に広い表を包む。狭い画面では表だけ横スクロールし、ページ全体は横に動かない。 */
 export function scroll(tag: string, attrs: Record<string, string>, ...children: Child[]): HTMLElement {
-  return h("div", { class: "tablewrap" }, h(tag, attrs, ...children));
+  return h("div", {}, h("p", { class: "scroll-hint" }, "表は横にスクロールできます →"), h("div", { class: "tablewrap" }, h(tag, attrs, ...children)));
 }
 
 /** 見出しセル。用語があれば説明を title に入れ、点線の下線で示す（詳しくは terms.html）。 */

@@ -65,3 +65,58 @@ export function crosstab(rows: Row[], order: string[]): CrossCell[] {
   const keys = [...order.filter((k) => m.has(k)), ...[...m.keys()].filter((k) => !order.includes(k))];
   return keys.map((k) => m.get(k)!);
 }
+
+/** index 上部の概要。金額は基準のシート年度（実績年度が揃う行）だけで合計する。 */
+export interface Overview {
+  projects: number;
+  /** 金額の合計に使った行（基準シートの行）の数 */
+  onAxis: number;
+  initial: number;
+  current: number;
+  executed: number;
+  /** 執行額の合計 ÷ 歳出予算現額の合計（どちらも確定し、現額が正の行だけ）。対象がなければ null */
+  execRate: number | null;
+  withSignals: number;
+  contradictions: number;
+}
+
+export function overview(rows: Row[], sheetYear: number): Overview {
+  const o: Overview = { projects: rows.length, onAxis: 0, initial: 0, current: 0, executed: 0, execRate: null, withSignals: 0, contradictions: 0 };
+  let rc = 0;
+  let re = 0;
+  for (const r of rows) {
+    if (r.signalCodes.length > 0) o.withSignals++;
+    if (r.verdict === 3) o.contradictions++;
+    if (r.sheetYear !== sheetYear) continue;
+    o.onAxis++;
+    o.initial += r.initial ?? 0;
+    o.current += r.current ?? 0;
+    o.executed += r.executed ?? 0;
+    if (!r.execState && r.current !== null && r.current > 0 && r.executed !== null) {
+      rc += r.current;
+      re += r.executed;
+    }
+  }
+  o.execRate = rc > 0 ? re / rc : null;
+  return o;
+}
+
+/** 府省庁ごとの規模。当初予算は基準シートの行だけで合計し、多い順に並べる。 */
+export interface MinistryTotal {
+  ministry: string;
+  count: number;
+  initial: number;
+  withSignals: number;
+}
+
+export function ministryTotals(rows: Row[], sheetYear: number): MinistryTotal[] {
+  const m = new Map<string, MinistryTotal>();
+  for (const r of rows) {
+    const t = m.get(r.ministry) ?? { ministry: r.ministry, count: 0, initial: 0, withSignals: 0 };
+    t.count++;
+    if (r.signalCodes.length > 0) t.withSignals++;
+    if (r.sheetYear === sheetYear) t.initial += r.initial ?? 0;
+    m.set(r.ministry, t);
+  }
+  return [...m.values()].sort((a, b) => b.initial - a.initial || b.count - a.count);
+}
