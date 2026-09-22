@@ -40,7 +40,7 @@
 10. **file:// でも開ける。** 一覧データは index.html に JSON として埋め込み、リンクはすべて相対パス。
 11. **複数年度は予算事業ID で結合し、重なる予算年度は新しいシートを正とする。** 古いシートとの差異は注記に残す。ID が変わった継続事業の推定は 3b の課題で、自動結合はしない。
 12. **ループ検証はシート S の「反映状況」と S+1 シートの FY S+1 当初予算の増減で判定する。** 縮減・廃止・終了予定なのに増額なら「矛盾」。現状通り等は判定対象外。
-13. **公開は Cloudflare Workers の静的アセット配信（`zailoop.kwrkb.workers.dev`）。** Worker スクリプトは書かず、`wrangler.jsonc` で `site/` を置くだけ。ローカルで `zailoop build` してから `npx wrangler deploy` する手動運用で、CI からの fetch はしない（配布サイトへのアクセスを増やさない）。`site/` はコミットしない方針のまま。
+13. **公開は Cloudflare Workers の静的アセット配信（`zailoop.kwrkb.workers.dev`）。** Worker スクリプトは書かず、`wrangler.jsonc` で `site/` を置くだけ（`html_handling: none`、`/` は `site/_redirects` で `index.html` にリライト）。ローカルで `zailoop build` してから `npx wrangler deploy` する手動運用で、CI からの fetch はしない（配布サイトへのアクセスを増やさない）。`site/` はコミットしない方針のまま。
 
 ## リポジトリ
 

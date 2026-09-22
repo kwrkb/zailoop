@@ -79,3 +79,9 @@
 - 却下した案: (a) GitHub Pages、(b) GitHub Actions で fetch → build → deploy を自動化する
 - 決め手: (a) は生成物 6,232 ファイル・99MB をリポジトリにコミットする必要があり「`site/` はコミットしない」と衝突する。(b) は CI が配布サイトから CSV を取り直すことになり、取得は 1 ファイル 1 回に留める方針に反する。Workers の静的アセットならローカルで build した `site/` を `wrangler deploy` するだけで、上限（20,000 ファイル・1 ファイル 25MiB）にも収まる
 - 覆す条件: 年度更新が頻繁になり手動 deploy が負担になる（そのときは data/ をキャッシュした CI を検討）、または生成物が上限に近づく
+
+## 2026-09-23 Workers 静的アセットの `.html` の扱い
+
+- 却下した案: (a) `html_handling: auto-trailing-slash`（既定）、(b) `/` を `index.html` に向けるだけの Worker スクリプト
+- 決め手: (a) は `list.html` や `p/<ID>.html` への相対リンクを毎回 307 で拡張子なしに飛ばす。`none` にすると `.html` はそのまま返るが `/` が 404 になる。`_redirects` の `/ /index.html 200` で `/` だけリライトすれば Worker スクリプトなしで済む
+- 覆す条件: 生成側で拡張子なしのリンクに切り替える、または Workers の `html_handling` に「リダイレクトせず `/` だけ解決」の選択肢が増える

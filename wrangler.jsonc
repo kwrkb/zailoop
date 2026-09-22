@@ -1,5 +1,5 @@
 // Cloudflare Workers の静的アセット配信。Worker スクリプトはなく、site/ をそのまま置く。
-// 手順: ./zailoop build --years 2024,2025 --out site && npx wrangler deploy
+// 手順: ./zailoop build --years 2024,2025 --out site && printf "/ /index.html 200\n" > site/_redirects && npx wrangler deploy
 {
   "name": "zailoop",
   "compatibility_date": "2026-09-23",

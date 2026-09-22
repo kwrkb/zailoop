@@ -24,12 +24,13 @@ cd web && npm install && npm run verify   # 型検査・テスト・バンドル
 
 ## 公開（Cloudflare Workers）
 
-生成した `site/` を Workers の静的アセットとしてそのまま配信します（Worker スクリプトはありません）。`wrangler.jsonc` が `site/` を指しているので、ビルド後に deploy するだけです。
+生成した `site/` を Workers の静的アセットとしてそのまま配信します（Worker スクリプトはありません）。`wrangler.jsonc` が `site/` を指しているので、ビルド後に deploy するだけです。`_redirects` は `/` を `index.html` に 200 でリライトするためのもので、`html_handling: none`（相対リンクの `.html` をリダイレクトさせない）では `/` が自動では解決されません。
 
 ```sh
 ./zailoop build --years 2024,2025 --out site
-npx wrangler login                      # 初回だけ
-npx wrangler deploy                     # https://zailoop.kwrkb.workers.dev
+printf '/ /index.html 200\n' > site/_redirects   # build は既存ファイルを消さないので初回だけ
+npx wrangler login                                # 初回だけ
+npx wrangler deploy                               # https://zailoop.kwrkb.workers.dev
 ```
 
 ## データ出典
