@@ -22,6 +22,16 @@ go build ./cmd/zailoop
 cd web && npm install && npm run verify   # 型検査・テスト・バンドル
 ```
 
+## 公開（Cloudflare Workers）
+
+生成した `site/` を Workers の静的アセットとしてそのまま配信します（Worker スクリプトはありません）。`wrangler.jsonc` が `site/` を指しているので、ビルド後に deploy するだけです。
+
+```sh
+./zailoop build --years 2024,2025 --out site
+npx wrangler login                      # 初回だけ
+npx wrangler deploy                     # https://zailoop.kwrkb.workers.dev
+```
+
 ## データ出典
 
 行政事業レビュー見える化サイト（内閣官房行政改革推進本部事務局）のデータを加工して作成しています。
