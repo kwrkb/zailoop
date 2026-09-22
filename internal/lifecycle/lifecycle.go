@@ -90,14 +90,15 @@ type Settlement struct {
 
 // OutcomeLine は ⑤ の成果指標 1 件（FY N の目標と実績）。
 type OutcomeLine struct {
-	Kind   string // アウトプット/アウトカム
-	Term   string
-	Goal   string
-	Metric string
-	Unit   string
-	Target string // FY N の目標値（空あり）
-	Actual string // FY N の実績値
-	Rate   string // FY N の達成率
+	Kind       string // アウトプット/アウトカム
+	TargetType string // 定量的/定性的
+	Term       string
+	Goal       string
+	Metric     string
+	Unit       string
+	Target     string // FY N の目標値（空あり）
+	Actual     string // FY N の実績値
+	Rate       string // FY N の達成率
 }
 
 // Evaluation は ⑤ 評価。ダッシュだけの記述は空に正規化する。
@@ -127,6 +128,15 @@ type Reflection struct {
 	NextInitialState State
 }
 
+// YearLine は予算年度ごとの主要 3 値。詳細ページの年度推移と一覧のスパークライン用。
+type YearLine struct {
+	Year     int
+	Initial  rs.Yen
+	Current  rs.Yen
+	Executed rs.Yen
+	HasTotal bool
+}
+
 // PayeeSummary は 5-1 のブロック概要。
 type PayeeSummary struct {
 	Number     string
@@ -151,8 +161,9 @@ type Lifecycle struct {
 
 	Payees      []PayeeSummary // 金額上位。BlockCount と合わせて「ほか n ブロック」を出す
 	BlockCount  int
-	BudgetYears []int    // シートにある予算年度（昇順）
-	Notes       []string // 整合チェックの警告（rs の Issues を含む）
+	BudgetYears []int      // シートにある予算年度（昇順）
+	Years       []YearLine // 予算年度ごとの当初・現額・執行（昇順）
+	Notes       []string   // 整合チェックの警告（rs の Issues を含む）
 }
 
 // Options は Build の設定。
@@ -174,6 +185,7 @@ func Build(s *rs.Sheet, opt Options) *Lifecycle {
 	lc := &Lifecycle{Project: s.Project, SheetYear: s.FiscalYear, ActualYear: n}
 	for _, b := range s.Budgets {
 		lc.BudgetYears = append(lc.BudgetYears, b.Year)
+		lc.Years = append(lc.Years, YearLine{Year: b.Year, Initial: b.Total.Initial, Current: b.Total.Current, Executed: b.Total.Executed, HasTotal: b.HasTotal})
 		for _, is := range b.Issues {
 			lc.Notes = append(lc.Notes, fmt.Sprintf("予算年度%d: %s", b.Year, is))
 		}
@@ -244,9 +256,13 @@ func buildExecution(s *rs.Sheet, n int) Execution {
 	switch {
 	case !x.Executed.Valid:
 		x.State = StateMissing
-	case !b.Total.Current.Valid || b.Total.Current.Value <= 0:
+	case (!b.Total.Current.Valid || b.Total.Current.Value <= 0) && x.Executed.Value != 0:
 		// 現額が 0 以下なのに執行額がある（予算が別事業に計上されているケース）。執行額は原値を出し、率は対象外。
 		x.State = StateNotComputable
+		x.Rate = rs.Ratio{}
+	case !b.Total.Current.Valid || b.Total.Current.Value <= 0:
+		// 現額 0・執行 0。値はあるが率は定義できない。
+		x.State = StateOK
 		x.Rate = rs.Ratio{}
 	default:
 		x.State = StateOK
@@ -299,7 +315,7 @@ func buildEvaluation(s *rs.Sheet, n int) Evaluation {
 			continue
 		}
 		e.Outcomes = append(e.Outcomes, OutcomeLine{
-			Kind: in.Kind, Term: in.Term, Goal: in.Goal, Metric: in.Metric, Unit: in.Unit,
+			Kind: in.Kind, TargetType: in.TargetType, Term: in.Term, Goal: in.Goal, Metric: in.Metric, Unit: in.Unit,
 			Target: in.Targets[n], Actual: in.Actuals[n], Rate: in.Rates[n],
 		})
 	}

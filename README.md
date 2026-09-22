@@ -6,6 +6,17 @@
 go build ./cmd/zailoop
 ./zailoop fetch --year 2024          # data/ に配布 ZIP を取得・展開（各ファイル 1 回だけ）
 ./zailoop show 884 --year 2024       # 予算事業ID 884 のライフサイクルを表示
+./zailoop build --out site           # 全事業の静的サイトを生成（index.html / list.html / p/<ID>.html）
+```
+
+`site/index.html` はブラウザで直接開けます（file:// 可）。一覧・「ループの断絶」・成果指標の 3 ビューがあり、各事業の詳細ページ（JS なし）に飛べます。断絶判定の閾値は `build` の引数（`--gap-ratio`, `--min-exec-rate`, `--min-unused`, `--unused-ratio`, `--outcome-low`, `--outcome-high`）で変えられます。
+
+## フロント（web/）の開発
+
+一覧ページのフロントは TypeScript です。Go のビルドには Node は不要で、成果物 `internal/site/assets/app.js` をコミットしています。変更したときは次で再生成してください。
+
+```sh
+cd web && npm install && npm run verify   # 型検査・テスト・バンドル
 ```
 
 ## データ出典

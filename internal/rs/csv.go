@@ -81,23 +81,35 @@ func (r *csvRow) ratio(name string) Ratio {
 	return Ratio{Value: n, Valid: err == nil}
 }
 
-// scan validates the schema before visiting only the requested project's rows.
-// It reads to EOF, including records after the last matching ID.
-func (d Dir) scan(number, id string, required []string, visit func(*csvRow) error) error {
+type csvFile struct {
+	path    string
+	f       *os.File
+	reader  *csv.Reader
+	columns map[string]int
+}
+
+func (f *csvFile) Close() error { return f.f.Close() }
+
+func (d Dir) openCSV(number string, required []string) (*csvFile, error) {
 	pattern := filepath.Join(d.Path, fmt.Sprintf("%s_RS_%d_*.csv", number, d.Year))
 	paths, err := filepath.Glob(pattern)
 	if err != nil {
-		return fmt.Errorf("CSV の検索 %q: %w", pattern, err)
+		return nil, fmt.Errorf("CSV の検索 %q: %w", pattern, err)
 	}
 	if len(paths) != 1 {
-		return fmt.Errorf("CSV %q: 対象ファイルは1件必要です（%d件）", pattern, len(paths))
+		return nil, fmt.Errorf("CSV %q: 対象ファイルは1件必要です（%d件）", pattern, len(paths))
 	}
 	path := paths[0]
 	f, err := os.Open(path)
 	if err != nil {
-		return fmt.Errorf("CSV を開く: %w", err)
+		return nil, fmt.Errorf("CSV を開く: %w", err)
 	}
-	defer f.Close()
+	ready := false
+	defer func() {
+		if !ready {
+			f.Close()
+		}
+	}()
 
 	input := bufio.NewReader(f)
 	if prefix, _ := input.Peek(3); string(prefix) == "\xef\xbb\xbf" {
@@ -107,20 +119,33 @@ func (d Dir) scan(number, id string, required []string, visit func(*csvRow) erro
 	reader.ReuseRecord = true
 	header, err := reader.Read()
 	if err != nil {
-		return fmt.Errorf("%s: ヘッダ: %w", path, err)
+		return nil, fmt.Errorf("%s: ヘッダ: %w", path, err)
 	}
 	columns := make(map[string]int, len(header))
 	for i, name := range header {
 		if _, exists := columns[name]; exists {
-			return fmt.Errorf("%s: ヘッダ %q が重複しています", path, name)
+			return nil, fmt.Errorf("%s: ヘッダ %q が重複しています", path, name)
 		}
 		columns[name] = i
 	}
 	for _, name := range append([]string{"予算事業ID"}, required...) {
 		if _, exists := columns[name]; !exists {
-			return fmt.Errorf("%s: 必須ヘッダ %q がありません", path, name)
+			return nil, fmt.Errorf("%s: 必須ヘッダ %q がありません", path, name)
 		}
 	}
+	ready = true
+	return &csvFile{path: path, f: f, reader: reader, columns: columns}, nil
+}
+
+// scan validates the schema before visiting only the requested project's rows.
+// It reads to EOF, including records after the last matching ID.
+func (d Dir) scan(number, id string, required []string, visit func(*csvRow) error) error {
+	file, err := d.openCSV(number, required)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	path, reader, columns := file.path, file.reader, file.columns
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {

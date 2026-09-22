@@ -20,26 +20,58 @@ type Dir struct {
 // ID が存在しない場合は errors.Is(err, ErrNotFound) が true になる。
 func (d Dir) LoadSheet(id string) (*Sheet, error) {
 	sheet := new(Sheet)
-	found, err := d.loadProject(id, sheet)
-	if err != nil {
-		return nil, err
-	}
-	if !found {
-		return nil, fmt.Errorf("%w: %s", ErrNotFound, id)
-	}
-	for _, load := range []func(string, *Sheet) error{
-		d.loadBudgets, d.loadItems, d.loadIndicators, d.loadEvaluation, d.loadPayees,
-	} {
-		if err := load(id, sheet); err != nil {
+	for _, t := range tables() {
+		b := t.start(id, sheet)
+		if err := d.scan(t.number, id, t.columns, b.row); err != nil {
 			return nil, err
+		}
+		if err := b.finish(); err != nil {
+			return nil, err
+		}
+		if project, ok := b.(*projectBuilder); ok && !project.found {
+			return nil, fmt.Errorf("%w: %s", ErrNotFound, id)
 		}
 	}
 	return sheet, nil
 }
 
+type builder interface {
+	row(*csvRow) error
+	finish() error
+}
+
+type table struct {
+	number  string
+	columns []string
+	start   func(id string, s *Sheet) builder
+}
+
+func tables() []table {
+	return []table{
+		{"1-2", projectColumns, func(id string, s *Sheet) builder {
+			return &projectBuilder{sheet: s, id: id}
+		}},
+		{"2-1", budgetColumns, func(_ string, s *Sheet) builder {
+			return &budgetBuilder{sheet: s, byYear: make(map[int]*BudgetYear), totalCounts: make(map[int]int)}
+		}},
+		{"2-2", itemColumns, func(_ string, s *Sheet) builder {
+			return &itemBuilder{sheet: s}
+		}},
+		{"3-1", indicatorColumns, func(_ string, s *Sheet) builder {
+			return &indicatorBuilder{sheet: s, byKey: make(map[[5]string]int)}
+		}},
+		{"4-1", evaluationColumns, func(_ string, s *Sheet) builder {
+			return &evaluationBuilder{sheet: s}
+		}},
+		{"5-1", payeeColumns, func(_ string, s *Sheet) builder {
+			return &payeeBuilder{sheet: s, blockIndex: -1, payeeIndex: -1}
+		}},
+	}
+}
+
 var methodNames = []string{"直接実施", "補助", "負担", "交付", "分担金・拠出金", "その他"}
 
-func (d Dir) loadProject(id string, sheet *Sheet) (bool, error) {
+var projectColumns = func() []string {
 	columns := []string{
 		"事業年度", "事業名", "府省庁", "局・庁", "課", "事業の目的", "事業の概要",
 		"事業区分", "事業開始年度", "事業終了（予定）年度", "主要経費",
@@ -47,29 +79,37 @@ func (d Dir) loadProject(id string, sheet *Sheet) (bool, error) {
 	for _, method := range methodNames {
 		columns = append(columns, "実施方法ー"+method)
 	}
-	found := false
-	err := d.scan("1-2", id, columns, func(r *csvRow) error {
-		if !found {
-			sheet.FiscalYear = r.year("事業年度")
-			sheet.Project = Project{
-				ID: id, Name: r.text("事業名"), Ministry: r.text("府省庁"),
-				Bureau: r.text("局・庁"), Division: r.text("課"),
-				Purpose: r.text("事業の目的"), Summary: r.text("事業の概要"),
-				Category: r.text("事業区分"), StartYear: r.text("事業開始年度"),
-				EndYear: r.text("事業終了（予定）年度"),
-			}
-			for _, method := range methodNames {
-				if strings.TrimSpace(r.text("実施方法ー"+method)) == "1" {
-					sheet.Project.Methods = append(sheet.Project.Methods, method)
-				}
-			}
-			found = true
-		}
-		expense := r.text("主要経費")
-		if strings.TrimSpace(expense) != "" && !slices.Contains(sheet.Project.MajorExpense, expense) {
-			sheet.Project.MajorExpense = append(sheet.Project.MajorExpense, expense)
-		}
-		return nil
-	})
-	return found, err
+	return columns
+}()
+
+type projectBuilder struct {
+	sheet *Sheet
+	id    string
+	found bool
 }
+
+func (b *projectBuilder) row(r *csvRow) error {
+	if !b.found {
+		b.sheet.FiscalYear = r.year("事業年度")
+		b.sheet.Project = Project{
+			ID: b.id, Name: r.text("事業名"), Ministry: r.text("府省庁"),
+			Bureau: r.text("局・庁"), Division: r.text("課"),
+			Purpose: r.text("事業の目的"), Summary: r.text("事業の概要"),
+			Category: r.text("事業区分"), StartYear: r.text("事業開始年度"),
+			EndYear: r.text("事業終了（予定）年度"),
+		}
+		for _, method := range methodNames {
+			if strings.TrimSpace(r.text("実施方法ー"+method)) == "1" {
+				b.sheet.Project.Methods = append(b.sheet.Project.Methods, method)
+			}
+		}
+		b.found = true
+	}
+	expense := r.text("主要経費")
+	if strings.TrimSpace(expense) != "" && !slices.Contains(b.sheet.Project.MajorExpense, expense) {
+		b.sheet.Project.MajorExpense = append(b.sheet.Project.MajorExpense, expense)
+	}
+	return nil
+}
+
+func (b *projectBuilder) finish() error { return nil }

@@ -29,7 +29,7 @@ func sheet884() *rs.Sheet {
 		},
 		Indicators: []rs.Indicator{
 			{Number: "1", Kind: "アクティビティ", Goal: "協議会を開催"},
-			{Number: "1", Kind: "アウトカム", Term: "1.短期", Goal: "学校等への支援", Metric: "出前授業の年間実施状況", Unit: "件",
+			{Number: "1", Kind: "アウトカム", TargetType: "定量的", Term: "1.短期", Goal: "学校等への支援", Metric: "出前授業の年間実施状況", Unit: "件",
 				Targets: map[int]string{2023: "3000"}, Actuals: map[int]string{2023: "5319"}, Rates: map[int]string{2023: "177.3"}},
 		},
 		Evaluation: rs.Evaluation{

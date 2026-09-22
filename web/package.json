@@ -1,0 +1,18 @@
+{
+  "name": "zailoop-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "zailoop の一覧・横断ビュー（index.html 用フロント）。ビルド成果物は internal/site/assets/app.js にコミットする。",
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node --test test/*.test.ts",
+    "build": "esbuild src/main.ts --bundle --format=iife --target=es2022 --outfile=../internal/site/assets/app.js",
+    "verify": "npm run check && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.0"
+  }
+}

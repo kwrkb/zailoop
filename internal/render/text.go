@@ -40,15 +40,15 @@ func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 	e := lc.Enacted
 	p.h("② 成立", fmt.Sprintf("FY%d 予算", n))
 	if e.State == lifecycle.StateOK {
-		p.kv("当初予算", yen(e.Initial))
-		p.kv("補正予算", yen(e.Supplementary))
-		p.kv("前年度繰越", yen(e.CarriedIn))
-		p.kv("予備費等", yen(e.Reserve))
-		p.kv("歳出予算現額", yen(e.Current))
+		p.kv("当初予算", Yen(e.Initial))
+		p.kv("補正予算", Yen(e.Supplementary))
+		p.kv("前年度繰越", Yen(e.CarriedIn))
+		p.kv("予備費等", Yen(e.Reserve))
+		p.kv("歳出予算現額", Yen(e.Current))
 		if len(e.Items) > 0 {
 			var parts []string
 			for _, it := range e.Items {
-				parts = append(parts, fmt.Sprintf("%s %s（%d件）", it.Kind, yen(it.Amount), it.Count))
+				parts = append(parts, fmt.Sprintf("%s %s（%d件）", it.Kind, Yen(it.Amount), it.Count))
 			}
 			p.kv("内訳(2-2)", strings.Join(parts, "、"))
 		}
@@ -61,10 +61,10 @@ func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 	p.h("③ 執行", fmt.Sprintf("FY%d 執行実績", n))
 	switch x.State {
 	case lifecycle.StateOK:
-		p.kv("執行額", yen(x.Executed))
-		p.kv("執行率", ratio(x.Rate))
+		p.kv("執行額", Yen(x.Executed))
+		p.kv("執行率", Ratio(x.Rate))
 	case lifecycle.StateNotComputable:
-		p.kv("執行額", yen(x.Executed)+"（歳出予算現額が 0 以下。予算は別事業に計上の可能性）")
+		p.kv("執行額", Yen(x.Executed)+"（歳出予算現額が 0 以下。予算は別事業に計上の可能性）")
 		p.kv("執行率", "—（算出対象外）")
 	default:
 		p.kv("執行", x.State.String())
@@ -73,12 +73,12 @@ func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 	// ④ 決算
 	st := lc.Settlement
 	p.h("④ 決算", fmt.Sprintf("FY%d 繰越・不用（不用相当額は 現額−執行−翌年度繰越 の導出値）", n))
-	p.kv("翌年度繰越", yen(st.CarriedOut))
+	p.kv("翌年度繰越", Yen(st.CarriedOut))
 	switch st.UnusedState {
 	case lifecycle.StateOK:
-		p.kv("不用相当額", yen(st.Unused))
+		p.kv("不用相当額", Yen(st.Unused))
 	case lifecycle.StateNeedsReview:
-		p.kv("不用相当額", fmt.Sprintf("算出不能／差額 %s（要確認）", yenValue(st.Diff)))
+		p.kv("不用相当額", fmt.Sprintf("算出不能／差額 %s（要確認）", YenValue(st.Diff)))
 	case lifecycle.StateNotComputable:
 		p.kv("不用相当額", "—（算出対象外）")
 	default:
@@ -105,7 +105,7 @@ func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 	if len(ev.Outcomes) > 0 {
 		p.kv(fmt.Sprintf("成果指標(FY%d)", n), "")
 		for _, o := range ev.Outcomes {
-			p.f("    - [%s%s] %s: 目標 %s / 実績 %s / 達成率 %s", o.Kind, termLabel(o.Term), metricLabel(o), or(o.Target, "—"), or(o.Actual, "—"), or(o.Rate, "—"))
+			p.f("    - [%s%s] %s: 目標 %s / 実績 %s / 達成率 %s", o.Kind, TermLabel(o.Term), MetricLabel(o), or(o.Target, "—"), or(o.Actual, "—"), or(o.Rate, "—"))
 		}
 	}
 
@@ -117,15 +117,15 @@ func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 		p.kv("  詳細", r.Detail)
 	}
 	if r.ReflectedGeneral.Valid {
-		p.kv("反映額(一般会計)", yen(r.ReflectedGeneral))
+		p.kv("反映額(一般会計)", Yen(r.ReflectedGeneral))
 	}
 	for _, sp := range r.ReflectedSpecial {
-		p.kv("反映額(特別会計)", fmt.Sprintf("%s %s %s", sp.Account, sp.Subaccount, yen(sp.Amount)))
+		p.kv("反映額(特別会計)", fmt.Sprintf("%s %s %s", sp.Account, sp.Subaccount, Yen(sp.Amount)))
 	}
 	p.kv(fmt.Sprintf("FY%d 当初予算（参考）", n+1), amount(r.NextInitial, r.NextInitialState))
 	p.kv(fmt.Sprintf("FY%d 概算要求", r.RequestYear), amount(r.Amount, r.State))
 	if r.Demand.Valid && r.Demand.Value != 0 {
-		p.kv("  うち要望額", yen(r.Demand))
+		p.kv("  うち要望額", Yen(r.Demand))
 	}
 	if r.ChangeReason != "" {
 		p.kv("  主な増減理由", r.ChangeReason)
@@ -139,7 +139,7 @@ func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 			if b.Role != "" {
 				line += "（" + b.Role + "）"
 			}
-			p.kv(line, yen(b.Total))
+			p.kv(line, Yen(b.Total))
 		}
 	}
 
@@ -187,18 +187,19 @@ func amount(v rs.Yen, st lifecycle.State) string {
 	if st != lifecycle.StateOK {
 		return st.String()
 	}
-	return yen(v)
+	return Yen(v)
 }
 
-// yen は円を 3 桁区切りで表す。空欄は「—」。
-func yen(v rs.Yen) string {
+// Yen は円を 3 桁区切りで表す。空欄は「—」。
+func Yen(v rs.Yen) string {
 	if !v.Valid {
 		return "—"
 	}
-	return yenValue(v.Value)
+	return YenValue(v.Value)
 }
 
-func yenValue(v int64) string {
+// YenValue は int64 の円を 3 桁区切りで表す。
+func YenValue(v int64) string {
 	neg := v < 0
 	if neg {
 		v = -v
@@ -217,7 +218,8 @@ func yenValue(v int64) string {
 	return b.String() + " 円"
 }
 
-func ratio(r rs.Ratio) string {
+// Ratio は執行率などを百分率で表す。空欄は「—」。
+func Ratio(r rs.Ratio) string {
 	if !r.Valid {
 		return "—"
 	}
@@ -258,14 +260,16 @@ func intsJoin(xs []int) string {
 	return fmt.Sprintf("%d〜%d", xs[0], xs[len(xs)-1])
 }
 
-func termLabel(term string) string {
+// TermLabel はアウトカムの期間を「・短期」のように表す。
+func TermLabel(term string) string {
 	if term == "" {
 		return ""
 	}
 	return "・" + strings.TrimLeft(term, "0123456789.")
 }
 
-func metricLabel(o lifecycle.OutcomeLine) string {
+// MetricLabel は指標名（無ければ目標）に単位を添える。
+func MetricLabel(o lifecycle.OutcomeLine) string {
 	s := o.Metric
 	if s == "" {
 		s = o.Goal

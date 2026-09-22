@@ -1,2 +1,5 @@
 data/
 prompt-*.md
+site/
+web/node_modules/
+/zailoop

@@ -11,8 +11,8 @@ import (
 
 func TestYenValue(t *testing.T) {
 	for v, want := range map[int64]string{0: "0 円", 999: "999 円", 1000: "1,000 円", 40217000: "40,217,000 円", -569000: "-569,000 円"} {
-		if got := yenValue(v); got != want {
-			t.Errorf("yenValue(%d) = %q, want %q", v, got, want)
+		if got := YenValue(v); got != want {
+			t.Errorf("YenValue(%d) = %q, want %q", v, got, want)
 		}
 	}
 }

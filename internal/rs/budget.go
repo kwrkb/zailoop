@@ -18,60 +18,65 @@ var accountColumns = []string{
 	"歳出予算現額", "執行額", "翌年度要求額", "要望額",
 }
 
-func (d Dir) loadBudgets(id string, sheet *Sheet) error {
+var budgetColumns = func() []string {
 	columns := []string{"予算年度", "主な増減理由", "その他特記事項", "会計区分", "会計", "勘定", "備考"}
 	columns = append(columns, totalColumns...)
-	columns = append(columns, accountColumns...)
-	byYear := make(map[int]*BudgetYear)
-	totalCounts := make(map[int]int)
-	err := d.scan("2-1", id, columns, func(r *csvRow) error {
-		year := r.year("予算年度")
-		budget := byYear[year]
-		if budget == nil {
-			budget = &BudgetYear{Year: year}
-			byYear[year] = budget
-		}
-		hasTotal, hasAccount := r.hasAny(totalColumns), r.hasAny(accountColumns)
-		if !hasTotal && !hasAccount {
-			budget.Issues = append(budget.Issues, "合計列・会計別列がともに空の行を無視しました")
-			return nil
-		}
-		if hasTotal {
-			total := BudgetTotal{
-				Initial: r.yen("当初予算（合計）"), Supplementary: r.yen("補正予算（合計）"),
-				CarriedIn: r.yen("前年度からの繰越し（合計）"), Reserve: r.yen("予備費等（合計）"),
-				Current: r.yen("計（歳出予算現額合計）"), Executed: r.yen("執行額（合計）"),
-				ExecRate: r.ratio("執行率"), CarriedOut: r.yen("翌年度への繰越し(合計）"),
-				NextRequest:  r.yen("翌年度要求額（合計）"),
-				ChangeReason: r.text("主な増減理由"), Notes: r.text("その他特記事項"),
-			}
-			if totalCounts[year] == 0 {
-				budget.Total = total
-			}
-			totalCounts[year]++
-		}
-		if hasAccount {
-			account := BudgetAccount{
-				Category: r.text("会計区分"), Account: r.text("会計"), Subaccount: r.text("勘定"),
-				Initial: r.yen("当初予算"), CarriedIn: r.yen("前年度から繰越し"),
-				Current: r.yen("歳出予算現額"), Executed: r.yen("執行額"),
-				NextRequest: r.yen("翌年度要求額"), Demand: r.yen("要望額"), Notes: r.text("備考"),
-			}
-			for i := range account.Supplementary {
-				account.Supplementary[i] = r.yen(fmt.Sprintf("第%d次補正予算", i+1))
-			}
-			for i := range account.Reserve {
-				account.Reserve[i] = r.yen(fmt.Sprintf("予備費等%d", i+1))
-			}
-			budget.Accounts = append(budget.Accounts, account)
-		}
-		return nil
-	})
-	if err != nil {
-		return err
+	return append(columns, accountColumns...)
+}()
+
+type budgetBuilder struct {
+	sheet       *Sheet
+	byYear      map[int]*BudgetYear
+	totalCounts map[int]int
+}
+
+func (b *budgetBuilder) row(r *csvRow) error {
+	year := r.year("予算年度")
+	budget := b.byYear[year]
+	if budget == nil {
+		budget = &BudgetYear{Year: year}
+		b.byYear[year] = budget
 	}
-	for year, budget := range byYear {
-		count := totalCounts[year]
+	hasTotal, hasAccount := r.hasAny(totalColumns), r.hasAny(accountColumns)
+	if !hasTotal && !hasAccount {
+		budget.Issues = append(budget.Issues, "合計列・会計別列がともに空の行を無視しました")
+		return nil
+	}
+	if hasTotal {
+		total := BudgetTotal{
+			Initial: r.yen("当初予算（合計）"), Supplementary: r.yen("補正予算（合計）"),
+			CarriedIn: r.yen("前年度からの繰越し（合計）"), Reserve: r.yen("予備費等（合計）"),
+			Current: r.yen("計（歳出予算現額合計）"), Executed: r.yen("執行額（合計）"),
+			ExecRate: r.ratio("執行率"), CarriedOut: r.yen("翌年度への繰越し(合計）"),
+			NextRequest:  r.yen("翌年度要求額（合計）"),
+			ChangeReason: r.text("主な増減理由"), Notes: r.text("その他特記事項"),
+		}
+		if b.totalCounts[year] == 0 {
+			budget.Total = total
+		}
+		b.totalCounts[year]++
+	}
+	if hasAccount {
+		account := BudgetAccount{
+			Category: r.text("会計区分"), Account: r.text("会計"), Subaccount: r.text("勘定"),
+			Initial: r.yen("当初予算"), CarriedIn: r.yen("前年度から繰越し"),
+			Current: r.yen("歳出予算現額"), Executed: r.yen("執行額"),
+			NextRequest: r.yen("翌年度要求額"), Demand: r.yen("要望額"), Notes: r.text("備考"),
+		}
+		for i := range account.Supplementary {
+			account.Supplementary[i] = r.yen(fmt.Sprintf("第%d次補正予算", i+1))
+		}
+		for i := range account.Reserve {
+			account.Reserve[i] = r.yen(fmt.Sprintf("予備費等%d", i+1))
+		}
+		budget.Accounts = append(budget.Accounts, account)
+	}
+	return nil
+}
+
+func (b *budgetBuilder) finish() error {
+	for year, budget := range b.byYear {
+		count := b.totalCounts[year]
 		budget.HasTotal = count == 1
 		switch {
 		case count == 0:
@@ -82,9 +87,9 @@ func (d Dir) loadBudgets(id string, sheet *Sheet) error {
 		if count > 0 {
 			checkBudgetTotals(budget)
 		}
-		sheet.Budgets = append(sheet.Budgets, *budget)
+		b.sheet.Budgets = append(b.sheet.Budgets, *budget)
 	}
-	slices.SortFunc(sheet.Budgets, func(a, b BudgetYear) int { return cmp.Compare(a.Year, b.Year) })
+	slices.SortFunc(b.sheet.Budgets, func(a, b BudgetYear) int { return cmp.Compare(a.Year, b.Year) })
 	return nil
 }
 
@@ -122,19 +127,22 @@ func checkBudgetTotals(budget *BudgetYear) {
 	}
 }
 
-func (d Dir) loadItems(id string, sheet *Sheet) error {
-	columns := []string{
-		"予算年度", "会計区分", "会計", "勘定", "予算種別", "所管", "組織・勘定", "項", "目",
-		"歳出予算項目の補足情報", "予算額（歳出予算項目ごと）", "翌年度要求額（歳出予算項目ごと）",
-	}
-	return d.scan("2-2", id, columns, func(r *csvRow) error {
-		sheet.Items = append(sheet.Items, BudgetItem{
-			Year: r.year("予算年度"), Category: r.text("会計区分"), Account: r.text("会計"),
-			Subaccount: r.text("勘定"), Kind: r.text("予算種別"), Owner: r.text("所管"),
-			Org: r.text("組織・勘定"), Ko: r.text("項"), Moku: r.text("目"),
-			Note: r.text("歳出予算項目の補足情報"), Amount: r.yen("予算額（歳出予算項目ごと）"),
-			NextRequest: r.yen("翌年度要求額（歳出予算項目ごと）"),
-		})
-		return nil
-	})
+var itemColumns = []string{
+	"予算年度", "会計区分", "会計", "勘定", "予算種別", "所管", "組織・勘定", "項", "目",
+	"歳出予算項目の補足情報", "予算額（歳出予算項目ごと）", "翌年度要求額（歳出予算項目ごと）",
 }
+
+type itemBuilder struct{ sheet *Sheet }
+
+func (b *itemBuilder) row(r *csvRow) error {
+	b.sheet.Items = append(b.sheet.Items, BudgetItem{
+		Year: r.year("予算年度"), Category: r.text("会計区分"), Account: r.text("会計"),
+		Subaccount: r.text("勘定"), Kind: r.text("予算種別"), Owner: r.text("所管"),
+		Org: r.text("組織・勘定"), Ko: r.text("項"), Moku: r.text("目"),
+		Note: r.text("歳出予算項目の補足情報"), Amount: r.yen("予算額（歳出予算項目ごと）"),
+		NextRequest: r.yen("翌年度要求額（歳出予算項目ごと）"),
+	})
+	return nil
+}
+
+func (b *itemBuilder) finish() error { return nil }
