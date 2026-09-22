@@ -40,6 +40,7 @@ type Row struct {
 	PrevInit   *int64    `json:"pi,omitempty"` // 前年シートの FY S 当初（当年当初との比較基準）
 	Verdict    int       `json:"lv,omitempty"` // LoopVerdict（0 不明 1 対象外 2 整合 3 矛盾）
 	Renamed    bool      `json:"rn,omitempty"` // 事業名が年度間で変わった
+	SheetYear  int       `json:"sy,omitempty"` // この行の最新シートの事業年度（Meta.SheetYear と違うときだけ）。実績は sy−1 年度
 }
 
 // SignalMeta は Signal の説明と件数。
@@ -75,6 +76,7 @@ type Payload struct {
 
 // indexBuilder は Summary を Row に変換しつつ meta の辞書を育てる。
 type indexBuilder struct {
+	sheetYear   int // 基準（最新）の事業年度
 	sheetYears  map[int]bool
 	years       []int
 	ministries  dict
@@ -102,7 +104,7 @@ func (d *dict) get(s string) int {
 }
 
 func newIndexBuilder(sheetYear int) *indexBuilder {
-	b := &indexBuilder{counts: map[lifecycle.Signal]int{}, sheetYears: map[int]bool{}}
+	b := &indexBuilder{sheetYear: sheetYear, counts: map[lifecycle.Signal]int{}, sheetYears: map[int]bool{}}
 	for y := sheetYear - 3; y <= sheetYear; y++ {
 		b.years = append(b.years, y)
 	}
@@ -127,6 +129,9 @@ func (b *indexBuilder) add(sm lifecycle.Summary) {
 	r.PrevInit = yenPtr(sm.PrevInitial)
 	r.Verdict = int(sm.LoopVerdict)
 	r.Renamed = sm.Renamed
+	if sm.SheetYear != 0 && sm.SheetYear != b.sheetYear {
+		r.SheetYear = sm.SheetYear
+	}
 	for _, y := range sm.SheetYears {
 		b.sheetYears[y] = true
 	}

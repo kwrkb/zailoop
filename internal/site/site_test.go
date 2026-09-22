@@ -139,3 +139,48 @@ func TestBuildMultiYear(t *testing.T) {
 		}
 	}
 }
+
+type multiSheetSource [][]*rs.Sheet
+
+func (m multiSheetSource) Each(fn func([]*rs.Sheet) error) error {
+	for _, ss := range m {
+		if err := fn(ss); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func TestBuildMultiMarksOlderSheetRows(t *testing.T) {
+	y := func(v int64) rs.Yen { return rs.Yen{Value: v, Valid: true} }
+	only2024 := &rs.Sheet{FiscalYear: 2024, Project: rs.Project{ID: "42", Name: "旧"}, Budgets: []rs.BudgetYear{{Year: 2023, HasTotal: true, Total: rs.BudgetTotal{Initial: y(1), Current: y(1), Executed: y(1)}}}}
+	both24 := &rs.Sheet{FiscalYear: 2024, Project: rs.Project{ID: "7", Name: "両"}}
+	both25 := &rs.Sheet{FiscalYear: 2025, Project: rs.Project{ID: "7", Name: "両"}, Budgets: []rs.BudgetYear{{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(2), Current: y(2), Executed: y(2)}}}}
+	out := t.TempDir()
+	if _, err := BuildMulti(multiSheetSource{{only2024}, {both24, both25}}, out, Options{Year: 2025}); err != nil {
+		t.Fatal(err)
+	}
+	index, _ := os.ReadFile(filepath.Join(out, "index.html"))
+	s := string(index)
+	i := strings.Index(s, `type="application/json">`) + len(`type="application/json">`)
+	j := strings.Index(s[i:], "</script>")
+	var p Payload
+	if err := json.Unmarshal([]byte(s[i:i+j]), &p); err != nil {
+		t.Fatal(err)
+	}
+	if p.Meta.SheetYear != 2025 || p.Meta.ActualYear != 2024 {
+		t.Errorf("meta = %+v", p.Meta)
+	}
+	for _, r := range p.Rows {
+		switch r.ID {
+		case "42":
+			if r.SheetYear != 2024 || r.Executed == nil || *r.Executed != 1 {
+				t.Errorf("row 42 should carry sy=2024: %+v", r)
+			}
+		case "7":
+			if r.SheetYear != 0 {
+				t.Errorf("row 7 should not carry sy: %+v", r)
+			}
+		}
+	}
+}

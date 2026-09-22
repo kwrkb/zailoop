@@ -101,7 +101,7 @@ func BuildMulti(src MultiSource, out string, opt Options) (Stats, error) {
 			if sheetYear == 0 {
 				sheetYear = lc.SheetYear
 			}
-			actualYear = lc.ActualYear
+			actualYear = sheetYear - 1
 			ib = newIndexBuilder(sheetYear)
 		}
 		sm := lifecycle.SummarizeTimeline(tl, opt.Thresholds)

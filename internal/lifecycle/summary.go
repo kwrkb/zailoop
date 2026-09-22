@@ -4,10 +4,11 @@ import "github.com/kwrkb/zailoop/internal/rs"
 
 // Summary は一覧・横断ビュー用の 1 事業分。JSON タグは持たない（直列化は site の責務）。
 type Summary struct {
-	ID       string
-	Name     string
-	Ministry string
-	Category string
+	ID        string
+	SheetYear int // この Summary の元になったシートの事業年度（実績は SheetYear−1）
+	Name      string
+	Ministry  string
+	Category  string
 
 	Request     rs.Yen // ① FY N 概算要求
 	Initial     rs.Yen // ② FY N 当初
@@ -42,7 +43,7 @@ type Summary struct {
 // Summarize は Lifecycle から一覧用サマリを作る。
 func Summarize(lc *Lifecycle, th Thresholds) Summary {
 	sm := Summary{
-		ID: lc.Project.ID, Name: lc.Project.Name, Ministry: lc.Project.Ministry, Category: lc.Project.Category,
+		ID: lc.Project.ID, SheetYear: lc.SheetYear, Name: lc.Project.Name, Ministry: lc.Project.Ministry, Category: lc.Project.Category,
 		Request: lc.Request.Amount, Initial: lc.Enacted.Initial, Current: lc.Enacted.Current,
 		Executed: lc.Execution.Executed, ExecRate: lc.Execution.Rate, ExecState: lc.Execution.State,
 		CarriedOut: lc.Settlement.CarriedOut, Unused: lc.Settlement.Unused, UnusedDiff: lc.Settlement.Diff, UnusedState: lc.Settlement.UnusedState,

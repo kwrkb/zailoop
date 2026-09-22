@@ -1,7 +1,7 @@
 import type { Meta, Row } from "../data.ts";
 import { h } from "../dom.ts";
 import { applyFilter, parseSort, sortRows } from "../filter.ts";
-import { PAGE, badges, loopCell, ministryOptions, nameCell, paged, rateCell, select, sortOptions, summaryLine, yenCell } from "./common.ts";
+import { PAGE, badges, loopCell, ministryOptions, nameCell, paged, rateCell, select, sortOptions, summaryLineWithStale, yenCell } from "./common.ts";
 
 export function renderList(root: HTMLElement, rows: Row[], meta: Meta, params: URLSearchParams, update: (p: URLSearchParams) => void) {
   const q = params.get("q") ?? "";
@@ -42,7 +42,7 @@ export function renderList(root: HTMLElement, rows: Row[], meta: Meta, params: U
         "tr",
         {},
         h("td", { class: "id" }, r.id),
-        nameCell(r),
+        nameCell(r, meta),
         h("td", {}, r.ministry),
         h("td", { class: "muted" }, r.category),
         yenCell(r.request),
@@ -66,7 +66,7 @@ export function renderList(root: HTMLElement, rows: Row[], meta: Meta, params: U
   root.replaceChildren(
     h("h2", {}, "一覧", h("small", { class: "muted" }, ` FY${n} を軸にした 6 段階の金額`)),
     controls,
-    summaryLine(filtered.length, rows.length),
+    summaryLineWithStale(filtered.length, rows.length, filtered, meta),
     h(
       "table",
       { class: "rows" },

@@ -25,3 +25,4 @@ table.cross { width: auto; margin: 8px 0; } table.cross th, table.cross td { pad
 table.cross button { font: inherit; background: none; border: none; color: #1d4ed8; cursor: pointer; padding: 0; text-decoration: underline; }
 table.cross td.on button, table.cross tr.on th button { font-weight: bold; color: var(--fg); }
 td.loop .arrow { color: var(--muted); } td.loop.bad .arrow, td.bad { color: var(--neg); font-weight: bold; } td.loop.good .arrow, td.good { color: #16a34a; }
+td.name .stale { display: inline-block; margin-left: 6px; font-size: 0.75rem; color: var(--badgefg); background: var(--badge); border-radius: 999px; padding: 0 8px; }

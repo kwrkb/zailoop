@@ -49,7 +49,7 @@ export function renderOutcomes(root: HTMLElement, rows: Row[], meta: Meta, param
         "tr",
         {},
         h("td", { class: "id" }, r.id),
-        nameCell(r),
+        nameCell(r, meta),
         h("td", {}, r.ministry),
         h("td", { class: "num" }, String(r.outcomes)),
         h("td", { class: "num" }, ratePct(mn)),

@@ -3,7 +3,7 @@ import { h } from "../dom.ts";
 import { applyFilter, parseSort, sortRows } from "../filter.ts";
 import { yenFull } from "../format.ts";
 import { countSignals } from "../stats.ts";
-import { PAGE, badges, loopCell, ministryOptions, nameCell, paged, rateCell, select, sortOptions, summaryLine, yenCell } from "./common.ts";
+import { PAGE, badges, loopCell, ministryOptions, nameCell, paged, rateCell, select, sortOptions, summaryLineWithStale, yenCell } from "./common.ts";
 
 /** 閾値の説明文。判定は Go 側（zailoop build）で済んでいるので、ここでは表示するだけ。 */
 function thresholdText(code: string, meta: Meta): string {
@@ -90,7 +90,7 @@ export function renderGaps(root: HTMLElement, rows: Row[], meta: Meta, params: U
         "tr",
         {},
         h("td", { class: "id" }, r.id),
-        nameCell(r),
+        nameCell(r, meta),
         h("td", {}, r.ministry),
         badges(r, meta),
         yenCell(r.request),
@@ -115,7 +115,7 @@ export function renderGaps(root: HTMLElement, rows: Row[], meta: Meta, params: U
     h("p", { class: "muted" }, "判定は生成時に行っています。閾値を変えるには zailoop build の引数を使ってください。"),
     tiles,
     controls,
-    summaryLine(filtered.length, scoped.length),
+    summaryLineWithStale(filtered.length, scoped.length, filtered, meta),
     h(
       "table",
       { class: "rows" },

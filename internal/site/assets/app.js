@@ -32,7 +32,9 @@
       prevReflection: r.pr && r.pr > 0 ? meta.reflections[r.pr - 1] ?? "" : "",
       prevInitial: n(r.pi),
       verdict: r.lv ?? 0,
-      renamed: r.rn ?? false
+      renamed: r.rn ?? false,
+      sheetYear: r.sy ?? meta.sheetYear,
+      actualYear: (r.sy ?? meta.sheetYear) - 1
     };
   }
   function decode(p) {
@@ -76,6 +78,14 @@
   function buildHash(view, params) {
     const q = params.toString();
     return `#${view}${q ? "?" + q : ""}`;
+  }
+  function withParams(params, changes) {
+    const p = new URLSearchParams(params);
+    for (const [k, v] of Object.entries(changes)) {
+      if (v === null || v === "") p.delete(k);
+      else p.set(k, v);
+    }
+    return p;
   }
 
   // src/filter.ts
@@ -253,11 +263,24 @@
 
   // src/views/common.ts
   var PAGE = 100;
-  function nameCell(r) {
-    return h("td", { class: "name" }, h("a", { href: `p/${r.id}.html` }, r.name), raw(sparkline(r.byYear)));
+  function isStale(r, meta) {
+    return r.sheetYear < meta.sheetYear;
+  }
+  function nameCell(r, meta) {
+    const td = h("td", { class: "name" }, h("a", { href: `p/${r.id}.html` }, r.name), raw(sparkline(r.byYear)));
+    if (meta && isStale(r, meta)) {
+      td.appendChild(h("span", { class: "stale", title: `${r.sheetYear}\u5E74\u5EA6\u30B7\u30FC\u30C8\u307E\u3067\u3002\u91D1\u984D\u306F FY${r.actualYear} \u8EF8` }, `${r.sheetYear}\u5E74\u5EA6\u307E\u3067`));
+    }
+    return td;
   }
   function yenCell(v, cls = "") {
     return h("td", { class: `num ${cls}`, title: yenFull(v) }, yenShort(v));
+  }
+  function summaryLineWithStale(n2, total, rows, meta) {
+    const stale = rows.filter((r) => isStale(r, meta)).length;
+    const el = summaryLine(n2, total);
+    if (stale > 0) el.appendChild(h("span", { class: "muted" }, `\uFF08\u3046\u3061 ${stale.toLocaleString("ja-JP")} \u4EF6\u306F ${meta.sheetYear} \u5E74\u5EA6\u30B7\u30FC\u30C8\u304C\u306A\u304F\u3001\u5B9F\u7E3E\u5E74\u5EA6\u304C 1 \u5E74\u53E4\u3044\uFF09`));
+    return el;
   }
   function rateCell(r) {
     if (r.execState) return h("td", { class: "rate muted" }, r.execState);
@@ -400,7 +423,7 @@
         "tr",
         {},
         h("td", { class: "id" }, r.id),
-        nameCell(r),
+        nameCell(r, meta),
         h("td", {}, r.ministry),
         badges(r, meta),
         yenCell(r.request),
@@ -424,7 +447,7 @@
       h("p", { class: "muted" }, "\u5224\u5B9A\u306F\u751F\u6210\u6642\u306B\u884C\u3063\u3066\u3044\u307E\u3059\u3002\u95BE\u5024\u3092\u5909\u3048\u308B\u306B\u306F zailoop build \u306E\u5F15\u6570\u3092\u4F7F\u3063\u3066\u304F\u3060\u3055\u3044\u3002"),
       tiles,
       controls,
-      summaryLine(filtered.length, scoped.length),
+      summaryLineWithStale(filtered.length, scoped.length, filtered, meta),
       h(
         "table",
         { class: "rows" },
@@ -490,7 +513,7 @@
         "tr",
         {},
         h("td", { class: "id" }, r.id),
-        nameCell(r),
+        nameCell(r, meta),
         h("td", {}, r.ministry),
         h("td", { class: "muted" }, r.category),
         yenCell(r.request),
@@ -513,7 +536,7 @@
     root.replaceChildren(
       h("h2", {}, "\u4E00\u89A7", h("small", { class: "muted" }, ` FY${n2} \u3092\u8EF8\u306B\u3057\u305F 6 \u6BB5\u968E\u306E\u91D1\u984D`)),
       controls,
-      summaryLine(filtered.length, rows.length),
+      summaryLineWithStale(filtered.length, rows.length, filtered, meta),
       h(
         "table",
         { class: "rows" },
@@ -553,13 +576,8 @@
     const verdict = params.get("v") ?? "";
     const sort = parseSort(params.get("sort"), "verdict", "desc");
     const shown = Number(params.get("n") ?? PAGE) || PAGE;
-    const set = (k, v) => {
-      const p = new URLSearchParams(params);
-      if (v) p.set(k, v);
-      else p.delete(k);
-      p.delete("n");
-      update(p);
-    };
+    const set = (k, v) => setAll({ [k]: v });
+    const setAll = (changes) => update(withParams(params, { ...changes, n: null }));
     const prevYear = meta.sheetYears.length > 1 ? meta.sheetYears[meta.sheetYears.length - 2] ?? null : null;
     if (prevYear === null) {
       root.replaceChildren(
@@ -587,14 +605,8 @@
     table.appendChild(h("thead", {}, h("tr", {}, h("th", {}, `${prevYear}\u5E74\u5EA6\u30B7\u30FC\u30C8\u306E\u53CD\u6620\u72B6\u6CC1`), h("th", { class: "num" }, "\u6E1B\u984D"), h("th", { class: "num" }, "\u540C\u984D"), h("th", { class: "num" }, "\u5897\u984D"))));
     const tbody = h("tbody");
     for (const c of cells) {
-      const cell = (d, n2) => h("td", { class: `num ${refl === c.reflection && dir === d ? "on" : ""}` }, h("button", { type: "button", onclick: () => {
-        set("r", c.reflection);
-        set("d", d);
-      } }, String(n2)));
-      const rowEl = h("tr", { class: refl === c.reflection ? "on" : "" }, h("th", {}, h("button", { type: "button", onclick: () => {
-        set("r", c.reflection);
-        set("d", "");
-      } }, c.reflection)), cell("down", c.down), cell("same", c.same), cell("up", c.up));
+      const cell = (d, n2) => h("td", { class: `num ${refl === c.reflection && dir === d ? "on" : ""}` }, h("button", { type: "button", onclick: () => setAll({ r: c.reflection, d }) }, String(n2)));
+      const rowEl = h("tr", { class: refl === c.reflection ? "on" : "" }, h("th", {}, h("button", { type: "button", onclick: () => setAll({ r: c.reflection, d: null }) }, c.reflection)), cell("down", c.down), cell("same", c.same), cell("up", c.up));
       tbody.appendChild(rowEl);
     }
     table.appendChild(tbody);
@@ -614,14 +626,7 @@
         (v) => set("v", v)
       ),
       select("sort", sortOptions([{ value: "verdict:desc", label: "\u77DB\u76FE\u3092\u4E0A\u306B" }, { value: "delta:desc", label: "\u5897\u984D\u304C\u5927\u304D\u3044\u9806" }, { value: "delta:asc", label: "\u6E1B\u984D\u304C\u5927\u304D\u3044\u9806" }]), `${sort.key}:${sort.dir}`, (v) => set("sort", v)),
-      refl || dir || verdict ? h("button", { type: "button", onclick: () => {
-        const p = new URLSearchParams(params);
-        p.delete("r");
-        p.delete("d");
-        p.delete("v");
-        p.delete("n");
-        update(p);
-      } }, "\u7D5E\u308A\u8FBC\u307F\u3092\u89E3\u9664") : null
+      refl || dir || verdict ? h("button", { type: "button", onclick: () => setAll({ r: null, d: null, v: null }) }, "\u7D5E\u308A\u8FBC\u307F\u3092\u89E3\u9664") : null
     );
     const { tbody: listBody, more } = paged(
       list,
@@ -629,7 +634,7 @@
         "tr",
         {},
         h("td", { class: "id" }, r.id),
-        nameCell(r),
+        nameCell(r, meta),
         h("td", {}, r.ministry),
         loopCell(r),
         yenCell(r.prevInitial),
@@ -715,7 +720,7 @@
           "tr",
           {},
           h("td", { class: "id" }, r.id),
-          nameCell(r),
+          nameCell(r, meta),
           h("td", {}, r.ministry),
           h("td", { class: "num" }, String(r.outcomes)),
           h("td", { class: "num" }, ratePct(mn)),

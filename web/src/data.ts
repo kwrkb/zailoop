@@ -60,6 +60,7 @@ export interface RawRow {
   pi?: number;
   lv?: number;
   rn?: boolean;
+  sy?: number;
 }
 
 export interface Payload {
@@ -98,6 +99,10 @@ export interface Row {
   /** 0 不明 / 1 対象外 / 2 整合 / 3 矛盾 */
   verdict: number;
   renamed: boolean;
+  /** この行の最新シートの事業年度。meta.sheetYear より古ければ実績年度もずれる */
+  sheetYear: number;
+  /** この行の実績年度（sheetYear − 1） */
+  actualYear: number;
 }
 
 export const VERDICT_LABEL: Record<number, string> = { 0: "不明", 1: "判定対象外", 2: "整合", 3: "矛盾" };
@@ -134,6 +139,8 @@ export function decodeRow(r: RawRow, meta: Meta): Row {
     prevInitial: n(r.pi),
     verdict: r.lv ?? 0,
     renamed: r.rn ?? false,
+    sheetYear: r.sy ?? meta.sheetYear,
+    actualYear: (r.sy ?? meta.sheetYear) - 1,
   };
 }
 

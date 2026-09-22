@@ -6,14 +6,31 @@ import { bar, sparkline } from "../svg.ts";
 
 export const PAGE = 100;
 
-/** 事業名セル（詳細への相対リンク + スパークライン）。 */
-export function nameCell(r: Row): HTMLElement {
-  return h("td", { class: "name" }, h("a", { href: `p/${r.id}.html` }, r.name), raw(sparkline(r.byYear)));
+/** この行が基準より古いシートのものか（実績年度がずれる）。 */
+export function isStale(r: Row, meta: Meta): boolean {
+  return r.sheetYear < meta.sheetYear;
+}
+
+/** 事業名セル（詳細への相対リンク + スパークライン）。古いシートの行には年度を明示する。 */
+export function nameCell(r: Row, meta?: Meta): HTMLElement {
+  const td = h("td", { class: "name" }, h("a", { href: `p/${r.id}.html` }, r.name), raw(sparkline(r.byYear)));
+  if (meta && isStale(r, meta)) {
+    td.appendChild(h("span", { class: "stale", title: `${r.sheetYear}年度シートまで。金額は FY${r.actualYear} 軸` }, `${r.sheetYear}年度まで`));
+  }
+  return td;
 }
 
 /** 金額セル（短い表記、title に全桁）。 */
 export function yenCell(v: number | null, cls = ""): HTMLElement {
   return h("td", { class: `num ${cls}`, title: yenFull(v) }, yenShort(v));
+}
+
+/** 基準年度と実績年度が違う行の件数を添えた件数表示。 */
+export function summaryLineWithStale(n: number, total: number, rows: Row[], meta: Meta): HTMLElement {
+  const stale = rows.filter((r) => isStale(r, meta)).length;
+  const el = summaryLine(n, total);
+  if (stale > 0) el.appendChild(h("span", { class: "muted" }, `（うち ${stale.toLocaleString("ja-JP")} 件は ${meta.sheetYear} 年度シートがなく、実績年度が 1 年古い）`));
+  return el;
 }
 
 /** 執行率セル（バー + 数値）。 */

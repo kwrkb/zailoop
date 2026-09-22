@@ -2,6 +2,7 @@ import { VERDICT_LABEL, type Meta, type Row } from "../data.ts";
 import { h } from "../dom.ts";
 import { applyFilter, parseSort, sortRows } from "../filter.ts";
 import { crosstab } from "../stats.ts";
+import { withParams } from "../state.ts";
 import { PAGE, badges, loopCell, ministryOptions, nameCell, paged, select, sortOptions, summaryLine, yenCell } from "./common.ts";
 
 const ORDER = ["縮減", "廃止", "終了予定", "執行等改善", "年度内に改善を検討", "現状通り", "(空)"];
@@ -13,13 +14,8 @@ export function renderLoops(root: HTMLElement, rows: Row[], meta: Meta, params: 
   const verdict = params.get("v") ?? ""; // 3 = 矛盾 など
   const sort = parseSort(params.get("sort"), "verdict", "desc");
   const shown = Number(params.get("n") ?? PAGE) || PAGE;
-  const set = (k: string, v: string) => {
-    const p = new URLSearchParams(params);
-    if (v) p.set(k, v);
-    else p.delete(k);
-    p.delete("n");
-    update(p);
-  };
+  const set = (k: string, v: string) => setAll({ [k]: v });
+  const setAll = (changes: Record<string, string | null>) => update(withParams(params, { ...changes, n: null }));
   const prevYear: number | null = meta.sheetYears.length > 1 ? (meta.sheetYears[meta.sheetYears.length - 2] ?? null) : null;
 
   if (prevYear === null) {
@@ -51,8 +47,8 @@ export function renderLoops(root: HTMLElement, rows: Row[], meta: Meta, params: 
   const tbody = h("tbody");
   for (const c of cells) {
     const cell = (d: "down" | "same" | "up", n: number) =>
-      h("td", { class: `num ${refl === c.reflection && dir === d ? "on" : ""}` }, h("button", { type: "button", onclick: () => { set("r", c.reflection); set("d", d); } }, String(n)));
-    const rowEl = h("tr", { class: refl === c.reflection ? "on" : "" }, h("th", {}, h("button", { type: "button", onclick: () => { set("r", c.reflection); set("d", ""); } }, c.reflection)), cell("down", c.down), cell("same", c.same), cell("up", c.up));
+      h("td", { class: `num ${refl === c.reflection && dir === d ? "on" : ""}` }, h("button", { type: "button", onclick: () => setAll({ r: c.reflection, d }) }, String(n)));
+    const rowEl = h("tr", { class: refl === c.reflection ? "on" : "" }, h("th", {}, h("button", { type: "button", onclick: () => setAll({ r: c.reflection, d: null }) }, c.reflection)), cell("down", c.down), cell("same", c.same), cell("up", c.up));
     tbody.appendChild(rowEl);
   }
   table.appendChild(tbody);
@@ -73,7 +69,7 @@ export function renderLoops(root: HTMLElement, rows: Row[], meta: Meta, params: 
       (v) => set("v", v),
     ),
     select("sort", sortOptions([{ value: "verdict:desc", label: "矛盾を上に" }, { value: "delta:desc", label: "増額が大きい順" }, { value: "delta:asc", label: "減額が大きい順" }]), `${sort.key}:${sort.dir}`, (v) => set("sort", v)),
-    refl || dir || verdict ? h("button", { type: "button", onclick: () => { const p = new URLSearchParams(params); p.delete("r"); p.delete("d"); p.delete("v"); p.delete("n"); update(p); } }, "絞り込みを解除") : null,
+    refl || dir || verdict ? h("button", { type: "button", onclick: () => setAll({ r: null, d: null, v: null }) }, "絞り込みを解除") : null,
   );
 
   const { tbody: listBody, more } = paged(
@@ -83,7 +79,7 @@ export function renderLoops(root: HTMLElement, rows: Row[], meta: Meta, params: 
         "tr",
         {},
         h("td", { class: "id" }, r.id),
-        nameCell(r),
+        nameCell(r, meta),
         h("td", {}, r.ministry),
         loopCell(r),
         yenCell(r.prevInitial),
