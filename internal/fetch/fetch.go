@@ -118,6 +118,18 @@ func Fetch(ctx context.Context, year int, rawDir, csvDir string, opt Options) ([
 			return results, fmt.Errorf("%s: %w", name, err)
 		}
 		r.CSVPath = csvPath
+		// 旧版が別の名前（ZIP エントリ名や文字化け名）で展開した同じ番号・年度の CSV が
+		// 残っていると、読み取り側の「番号_RS_年度_*.csv は 1 件」検査に引っかかる。
+		// 展開物は ZIP から再生成できる派生物なので、正規名以外を消す。
+		removed, err := removeStaleCSVs(csvDir, name, year, csvPath)
+		if err != nil {
+			return results, fmt.Errorf("%s: %w", name, err)
+		}
+		if opt.Log != nil {
+			for _, p := range removed {
+				fmt.Fprintf(opt.Log, "removed stale %s\n", filepath.Base(p))
+			}
+		}
 		if opt.Log != nil {
 			state := "fetched"
 			if r.Skipped {
@@ -128,6 +140,30 @@ func Fetch(ctx context.Context, year int, rawDir, csvDir string, opt Options) ([
 		results = append(results, r)
 	}
 	return results, nil
+}
+
+// removeStaleCSVs は csvDir にある同じ番号・年度の CSV のうち keep 以外を削除して返す。
+// 番号はファイル名の先頭（"2-1" など）、年度は "_RS_<year>_" で照合する。
+func removeStaleCSVs(csvDir, name string, year int, keep string) ([]string, error) {
+	number, _, ok := strings.Cut(name, "_")
+	if !ok {
+		return nil, nil
+	}
+	matches, err := filepath.Glob(filepath.Join(csvDir, fmt.Sprintf("%s_RS_%d_*.csv", number, year)))
+	if err != nil {
+		return nil, err
+	}
+	var removed []string
+	for _, m := range matches {
+		if filepath.Clean(m) == filepath.Clean(keep) {
+			continue
+		}
+		if err := os.Remove(m); err != nil {
+			return removed, err
+		}
+		removed = append(removed, m)
+	}
+	return removed, nil
 }
 
 func download(ctx context.Context, c *http.Client, u, dst string) error {
@@ -209,7 +245,8 @@ func csvEntry(zr *zip.Reader) (*zip.File, error) {
 
 // Unzip は ZIP 内の CSV を dstDir に展開し、展開した CSV のパスを返す。
 // 一時ファイルに展開して成功したときだけ置き換えるので、失敗しても既存 CSV は残る。
-// パス走査を防ぐためエントリ名はベース名だけ使う。
+// 展開後の名前は ZIP のベース名 + ".csv" にする。配布 ZIP のエントリ名は年度によって
+// Shift_JIS（UTF-8 フラグなし）で入っていることがあり、そのまま使うと文字化けするため。
 func Unzip(zipPath, dstDir string) (string, error) {
 	zr, err := zip.OpenReader(zipPath)
 	if err != nil {
@@ -220,7 +257,7 @@ func Unzip(zipPath, dstDir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", zipPath, err)
 	}
-	dst := filepath.Join(dstDir, filepath.Base(f.Name))
+	dst := filepath.Join(dstDir, strings.TrimSuffix(filepath.Base(zipPath), filepath.Ext(zipPath))+".csv")
 	tmp := dst + ".part"
 	if err := extract(f, tmp); err != nil {
 		os.Remove(tmp)

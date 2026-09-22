@@ -168,6 +168,52 @@ func TestFetchReplacesCRCCorruptCachedZip(t *testing.T) {
 	}
 }
 
+func TestFetchRemovesStaleCSVs(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		name := strings.TrimSuffix(filepath.Base(r.URL.Path), ".zip")
+		w.Write(makeZip(t, name+".csv", "ok\n"))
+	}))
+	defer srv.Close()
+	csvDir := t.TempDir()
+	// 旧版が残した文字化け名と、別年度の CSV（消してはいけない）
+	stale := filepath.Join(csvDir, "2-1_RS_2024_\xe4\xba\x88\xe7\xae\x97.csv")
+	other := filepath.Join(csvDir, "2-1_RS_2023_予算・執行_サマリ.csv")
+	for _, p := range []string{stale, other} {
+		if err := os.WriteFile(p, []byte("old\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := Fetch(context.Background(), 2024, t.TempDir(), csvDir, Options{BaseURL: srv.URL, Delay: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(stale); err == nil {
+		t.Errorf("stale csv should be removed")
+	}
+	if _, err := os.Stat(other); err != nil {
+		t.Errorf("other-year csv must be kept: %v", err)
+	}
+	matches, _ := filepath.Glob(filepath.Join(csvDir, "2-1_RS_2024_*.csv"))
+	if len(matches) != 1 {
+		t.Errorf("expected exactly one 2-1 csv, got %v", matches)
+	}
+}
+
+func TestUnzipNamesCSVAfterZip(t *testing.T) {
+	dir := t.TempDir()
+	// エントリ名が壊れていても（Shift_JIS のまま等）、ZIP 名から CSV 名を決める
+	zp := filepath.Join(dir, "2-1_RS_2025_予算・執行_サマリ.zip")
+	if err := os.WriteFile(zp, makeZip(t, "\x97\x5c\x8e\x5a.csv", "a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Unzip(zp, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Base(got) != "2-1_RS_2025_予算・執行_サマリ.csv" {
+		t.Fatalf("got %s", got)
+	}
+}
+
 func TestUnzipKeepsExistingCSVOnFailure(t *testing.T) {
 	dir := t.TempDir()
 	corrupt := makeCRCCorruptZip(t, "x.csv")
