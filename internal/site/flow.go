@@ -229,10 +229,28 @@ func digest(tl *lifecycle.Timeline) []string {
 		out = append(out, fmt.Sprintf("%d年度シートの推進チーム所見は「%s」、翌年度要求への反映は「%s」。", lc.SheetYear, orText(ev.TeamOpinion, "記載なし"), orText(rf.Status, "記載なし")))
 	}
 
+	// ループ検証の文があるときは、増減はそちら（判定と同じ基準額）だけで示す。
+	// シート間で FY N 当初が改訂された事業で、隣り合う 2 文の基準額が食い違わないようにする。
+	var loop string
+	if len(tl.Loops) >= 2 {
+		lp := tl.Loops[len(tl.Loops)-2]
+		if lp.Closed && lp.Verdict != lifecycle.VerdictUnknown {
+			loop = fmt.Sprintf("ループ検証: %d年度シートの反映「%s」に対し、FY%d 当初は %s → FY%d 当初 %s", lp.SheetYear, orText(lp.Reflection, "記載なし"), lp.SheetYear, render.YenShort(lp.Initial), lp.SheetYear+1, render.YenShort(lp.NextInitial))
+			if d, ok := change(lp.Initial, lp.NextInitial); ok {
+				loop += "（" + d + "）"
+			}
+			if lp.Verdict == lifecycle.VerdictNeutral {
+				loop += "。この反映状況は増減を約束しないため判定対象外。"
+			} else {
+				loop += fmt.Sprintf("。判定は「%s」。", lp.Verdict)
+			}
+		}
+	}
+
 	var next []string
 	if rf.NextInitialState == lifecycle.StateOK {
 		s := fmt.Sprintf("FY%d 当初予算は %s", n+1, render.YenShort(rf.NextInitial))
-		if d, ok := change(e.Initial, rf.NextInitial); ok && e.State == lifecycle.StateOK {
+		if d, ok := change(e.Initial, rf.NextInitial); ok && e.State == lifecycle.StateOK && loop == "" {
 			s += fmt.Sprintf("（FY%d 当初比 %s）", n, d)
 		}
 		next = append(next, s)
@@ -244,19 +262,8 @@ func digest(tl *lifecycle.Timeline) []string {
 		out = append(out, strings.Join(next, "、")+"。")
 	}
 
-	if len(tl.Loops) >= 2 {
-		lp := tl.Loops[len(tl.Loops)-2]
-		if lp.Closed && lp.Verdict != lifecycle.VerdictUnknown {
-			s := fmt.Sprintf("ループ検証: %d年度シートの反映「%s」に対し、FY%d 当初は %s → FY%d 当初 %s", lp.SheetYear, orText(lp.Reflection, "記載なし"), lp.SheetYear, render.YenShort(lp.Initial), lp.SheetYear+1, render.YenShort(lp.NextInitial))
-			if d, ok := change(lp.Initial, lp.NextInitial); ok {
-				s += "（" + d + "）"
-			}
-			if lp.Verdict == lifecycle.VerdictNeutral {
-				out = append(out, s+"。この反映状況は増減を約束しないため判定対象外。")
-			} else {
-				out = append(out, s+fmt.Sprintf("。判定は「%s」。", lp.Verdict))
-			}
-		}
+	if loop != "" {
+		out = append(out, loop)
 	}
 	return out
 }
@@ -300,9 +307,9 @@ func evidenceText(ev lifecycle.Evidence) string {
 	case lifecycle.SignalOutcomeOvershoot:
 		return fmt.Sprintf("達成率の最大 %s%%（基準 %s%% 超）", trimFloat(ev.Observed), trimFloat(ev.Threshold))
 	case lifecycle.SignalReflectionContradicted:
-		return fmt.Sprintf("反映「%s」、当初 %s → %s", ev.Text, render.YenShort(ev.Base), render.YenShort(ev.Amount))
+		return fmt.Sprintf("%d年度シートの反映「%s」、FY%d 当初 %s → FY%d 当初 %s", ev.Year, ev.Text, ev.Year, render.YenShort(ev.Base), ev.Year+1, render.YenShort(ev.Amount))
 	case lifecycle.SignalRequestZeroed:
-		return fmt.Sprintf("要求 %s → 当初 %s", render.YenShort(ev.Base), render.YenShort(ev.Amount))
+		return fmt.Sprintf("FY%d 要求 %s → FY%d 当初 %s", ev.Year+1, render.YenShort(ev.Base), ev.Year+1, render.YenShort(ev.Amount))
 	}
 	return ""
 }

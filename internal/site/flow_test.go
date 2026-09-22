@@ -101,12 +101,23 @@ func TestDigest(t *testing.T) {
 	for _, want := range []string{
 		"FY2024 は歳出予算現額 1 億円 のうち 8,000 万円（80.0%）を執行。不用相当額 2,000 万円。",
 		"2025年度シートの推進チーム所見は「事業内容の一部改善」、翌年度要求への反映は「縮減」。",
-		"FY2025 当初予算は 1.2 億円（FY2024 当初比 +20.0%）",
+		"FY2025 当初予算は 1.2 億円。",
 		"2024年度シートの反映「現状通り」に対し、FY2024 当初は 1 億円 → FY2025 当初 1.2 億円（+20.0%）。この反映状況は増減を約束しないため判定対象外。",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("digest missing %q in:\n%s", want, got)
 		}
+	}
+	// FY2024 当初がシート間で改訂されていても、増減はループ検証の基準（2024 年度シート）で 1 回だけ出す
+	s25.Budgets[0].Total.Initial = y(90_000_000)
+	tl = lifecycle.Track([]*rs.Sheet{s24, s25}, lifecycle.Thresholds{})
+	got = strings.Join(digest(tl), "\n")
+	if strings.Contains(got, "当初比") || strings.Count(got, "%）") != 2 || !strings.Contains(got, "FY2024 当初は 1 億円 → FY2025 当初 1.2 億円（+20.0%）") {
+		t.Errorf("revised base should appear once:\n%s", got)
+	}
+	// ループ検証の文がなければ前年度比を出す
+	if got := strings.Join(digest(lifecycle.Track([]*rs.Sheet{s25}, lifecycle.Thresholds{})), "\n"); !strings.Contains(got, "（FY2024 当初比 +33.3%）") {
+		t.Errorf("single sheet digest:\n%s", got)
 	}
 	s24.Evaluation.Reflection = "廃止"
 	tl = lifecycle.Track([]*rs.Sheet{s24, s25}, lifecycle.Thresholds{})

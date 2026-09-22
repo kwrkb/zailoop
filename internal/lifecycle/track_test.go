@@ -82,7 +82,7 @@ func TestTrackContradictionAndZeroed(t *testing.T) {
 	if tl.Loops[0].Verdict != VerdictContradiction || !tl.Loops[0].Signals.Has(SignalReflectionContradicted) {
 		t.Errorf("loop = %+v", tl.Loops[0])
 	}
-	if evs := Explain(tl, SignalReflectionContradicted, Thresholds{}); len(evs) != 1 || evs[0].Text != "廃止" || evs[0].Base.Value != 100 || evs[0].Amount.Value != 200 {
+	if evs := Explain(tl, SignalReflectionContradicted, Thresholds{}); len(evs) != 1 || evs[0].Year != 2024 || evs[0].Text != "廃止" || evs[0].Base.Value != 100 || evs[0].Amount.Value != 200 {
 		t.Errorf("contradiction evidence = %+v", evs)
 	}
 	s25.Budgets[1].Total.Initial = y(0)

@@ -216,6 +216,7 @@ type Evidence struct {
 	ThresholdAmount int64   // Amount と比べた閾値（大きな不用）
 	Base            rs.Yen  // 比較元の金額
 	Text            string  // 反映状況など文字列の根拠
+	Year            int     // ループの兆候で比べたシートの事業年度 S（FY S 当初 → FY S+1）
 }
 
 // Explain は s に立っている兆候について、Detect / DetectLoop が見た値を返す。条件は再判定しない。
@@ -228,8 +229,8 @@ type Evidence struct {
 //   - negative_unused: Amount=差額（負）
 //   - outcome_shortfall / outcome_overshoot: Observed=達成率の最小 / 最大（%）, Threshold
 //   - no_outcome_actual: なし
-//   - reflection_contradicted: Text=前年シートの反映状況, Base=前年当初, Amount=当年当初
-//   - request_zeroed: Base=前年シートの概算要求, Amount=当年当初
+//   - reflection_contradicted: Year=S, Text=S シートの反映状況, Base=FY S 当初, Amount=FY S+1 当初
+//   - request_zeroed: Year=S, Base=S シートの FY S+1 概算要求, Amount=FY S+1 当初
 func Explain(tl *Timeline, s Signal, th Thresholds) []Evidence {
 	th = th.WithDefaults()
 	lc := tl.Latest
@@ -269,9 +270,9 @@ func Explain(tl *Timeline, s Signal, th Thresholds) []Evidence {
 			_, ev.Observed, _, _ = outcomeRange(lc)
 			ev.Threshold = th.OutcomeOvershoot
 		case SignalReflectionContradicted:
-			ev.Text, ev.Base, ev.Amount = prev.Reflection, prev.Initial, prev.NextInitial
+			ev.Year, ev.Text, ev.Base, ev.Amount = prev.SheetYear, prev.Reflection, prev.Initial, prev.NextInitial
 		case SignalRequestZeroed:
-			ev.Base, ev.Amount = prev.NextRequest, prev.NextInitial
+			ev.Year, ev.Base, ev.Amount = prev.SheetYear, prev.NextRequest, prev.NextInitial
 		}
 		out = append(out, ev)
 	}

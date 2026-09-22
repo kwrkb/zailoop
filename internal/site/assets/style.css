@@ -111,4 +111,5 @@ h2.part { margin-top:2.8em; padding-top:1em; border-top:1px solid var(--line); }
   .wf-row { grid-template-columns:6.5em minmax(0, 1fr) 6.5em; gap:8px; }
   .wf { padding:8px 12px 12px; }
   table.timeline, .yeartable, table.outcomes { display:block; overflow-x:auto; }
+  table.timeline th, table.timeline td { white-space:nowrap; }
 }
