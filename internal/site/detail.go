@@ -47,6 +47,34 @@ var funcs = template.FuncMap{
 	},
 	"yenSigned": func(v int64) string { return render.YenValue(v) },
 	"inc":       func(n int) int { return n + 1 },
+	"verdict":   func(v lifecycle.LoopVerdict) string { return v.String() },
+	"verdictClass": func(v lifecycle.LoopVerdict) string {
+		switch v {
+		case lifecycle.VerdictContradiction:
+			return "bad"
+		case lifecycle.VerdictConsistent:
+			return "good"
+		}
+		return ""
+	},
+	"execText": func(y lifecycle.YearRow) string {
+		switch y.ExecState {
+		case lifecycle.StateOK:
+			return render.Yen(y.Executed)
+		case lifecycle.StateNotComputable:
+			return render.Yen(y.Executed) + "（算出対象外）"
+		}
+		return "未確定"
+	},
+	"unusedText": func(y lifecycle.YearRow) string {
+		switch y.UnusedState {
+		case lifecycle.StateOK:
+			return render.Yen(y.Unused)
+		case lifecycle.StateNeedsReview:
+			return "要確認"
+		}
+		return "—"
+	},
 }
 
 var templates = template.Must(template.New("").Funcs(funcs).ParseFS(templateFS, "templates/*.html"))
@@ -54,6 +82,8 @@ var templates = template.Must(template.New("").Funcs(funcs).ParseFS(templateFS, 
 // detailData は detail.html に渡すデータ。
 type detailData struct {
 	LC          *lifecycle.Lifecycle
+	TL          *lifecycle.Timeline
+	Multi       bool // 2 年度以上のシートがある
 	Summary     lifecycle.Summary
 	StageBars   []Bar
 	YearBars    []yearBar
@@ -71,7 +101,8 @@ type yearBar struct {
 }
 
 // writeDetail は 1 事業の詳細ページを書く。
-func writeDetail(w io.Writer, lc *lifecycle.Lifecycle, sm lifecycle.Summary, generated string) error {
+func writeDetail(w io.Writer, tl *lifecycle.Timeline, sm lifecycle.Summary, generated string) error {
+	lc := tl.Latest
 	n := lc.ActualYear
 	stage := []BarInput{
 		{Label: fmt.Sprintf("① FY%d 概算要求", n), Value: sm.Request, Note: lc.Request.State.String()},
@@ -99,7 +130,7 @@ func writeDetail(w io.Writer, lc *lifecycle.Lifecycle, sm lifecycle.Summary, gen
 		}
 	}
 	return templates.ExecuteTemplate(w, "detail.html", detailData{
-		LC: lc, Summary: sm, StageBars: Bars(stage, render.Yen), YearBars: ybars, Signals: sigs,
+		LC: lc, TL: tl, Multi: len(tl.SheetYears) > 1, Summary: sm, StageBars: Bars(stage, render.Yen), YearBars: ybars, Signals: sigs,
 		Generated: generated, Attribution: render.Attribution, Root: "../",
 	})
 }

@@ -1,7 +1,7 @@
 import type { Meta, Row } from "../data.ts";
 import { h } from "../dom.ts";
 import { applyFilter, parseSort, sortRows } from "../filter.ts";
-import { PAGE, badges, ministryOptions, nameCell, paged, rateCell, select, sortOptions, summaryLine, yenCell } from "./common.ts";
+import { PAGE, badges, loopCell, ministryOptions, nameCell, paged, rateCell, select, sortOptions, summaryLine, yenCell } from "./common.ts";
 
 export function renderList(root: HTMLElement, rows: Row[], meta: Meta, params: URLSearchParams, update: (p: URLSearchParams) => void) {
   const q = params.get("q") ?? "";
@@ -9,6 +9,7 @@ export function renderList(root: HTMLElement, rows: Row[], meta: Meta, params: U
   const c = params.get("c") ?? "";
   const sort = parseSort(params.get("sort"));
   const shown = Number(params.get("n") ?? PAGE) || PAGE;
+  const multi = meta.sheetYears.length > 1;
   const set = (k: string, v: string) => {
     const p = new URLSearchParams(params);
     if (v) p.set(k, v);
@@ -51,6 +52,7 @@ export function renderList(root: HTMLElement, rows: Row[], meta: Meta, params: U
         rateCell(r),
         yenCell(r.unused, r.unusedState ? "muted" : ""),
         h("td", {}, r.reflection),
+        ...(multi ? [loopCell(r)] : []),
         badges(r, meta),
       ),
     shown,
@@ -85,6 +87,7 @@ export function renderList(root: HTMLElement, rows: Row[], meta: Meta, params: U
           h("th", {}, "③ 執行率"),
           h("th", { class: "num" }, "④ 不用相当"),
           h("th", {}, "⑥ 反映"),
+          ...(multi ? [h("th", {}, "前年反映→当初")] : []),
           h("th", {}, "兆候"),
         ),
       ),

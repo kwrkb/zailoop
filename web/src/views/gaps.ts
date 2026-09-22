@@ -3,7 +3,7 @@ import { h } from "../dom.ts";
 import { applyFilter, parseSort, sortRows } from "../filter.ts";
 import { yenFull } from "../format.ts";
 import { countSignals } from "../stats.ts";
-import { PAGE, badges, ministryOptions, nameCell, paged, rateCell, select, sortOptions, summaryLine, yenCell } from "./common.ts";
+import { PAGE, badges, loopCell, ministryOptions, nameCell, paged, rateCell, select, sortOptions, summaryLine, yenCell } from "./common.ts";
 
 /** 閾値の説明文。判定は Go 側（zailoop build）で済んでいるので、ここでは表示するだけ。 */
 function thresholdText(code: string, meta: Meta): string {
@@ -30,6 +30,7 @@ export function renderGaps(root: HTMLElement, rows: Row[], meta: Meta, params: U
   const m = params.get("m") ?? "";
   const sort = parseSort(params.get("sort"), "signals", "desc");
   const shown = Number(params.get("n") ?? PAGE) || PAGE;
+  const multi = meta.sheetYears.length > 1;
   const set = (k: string, v: string) => {
     const p = new URLSearchParams(params);
     if (v) p.set(k, v);
@@ -99,6 +100,7 @@ export function renderGaps(root: HTMLElement, rows: Row[], meta: Meta, params: U
         rateCell(r),
         yenCell(r.unused, r.unusedState ? "muted" : ""),
         h("td", {}, r.reflection),
+        ...(multi ? [loopCell(r)] : []),
       ),
     shown,
     () => {
@@ -134,6 +136,7 @@ export function renderGaps(root: HTMLElement, rows: Row[], meta: Meta, params: U
           h("th", {}, "③ 執行率"),
           h("th", { class: "num" }, "④ 不用相当"),
           h("th", {}, "⑥ 反映"),
+          ...(multi ? [h("th", {}, "前年反映→当初")] : []),
         ),
       ),
       tbody,

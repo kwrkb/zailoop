@@ -66,6 +66,8 @@ const (
 	SignalOutcomeShortfall                          // アウトカム達成率が低い
 	SignalOutcomeOvershoot                          // アウトカム達成率が高すぎる（目標設定が甘い可能性）
 	SignalNoOutcomeActual                           // アウトカム指標があるのに確定年度の達成率がない
+	SignalReflectionContradicted                    // 縮減・廃止・終了予定なのに翌年の当初予算が増えた（複数年度）
+	SignalRequestZeroed                             // 概算要求があったのに翌年の当初予算が 0（複数年度）
 )
 
 // Has は s が f をすべて含むとき true。
@@ -99,6 +101,20 @@ var SignalInfo = []SignalDesc{
 	{SignalOutcomeShortfall, "outcome_shortfall", "成果未達", "アウトカム達成率の最小値が低い"},
 	{SignalOutcomeOvershoot, "outcome_overshoot", "成果超過", "アウトカム達成率の最大値が高すぎる"},
 	{SignalNoOutcomeActual, "no_outcome_actual", "成果実績なし", "定量的アウトカム指標があるのに確定年度の達成率がない（新規事業を除く）"},
+	{SignalReflectionContradicted, "reflection_contradicted", "反映と逆行", "前年シートの反映状況が縮減・廃止・終了予定なのに、翌年の当初予算が増えた"},
+	{SignalRequestZeroed, "request_zeroed", "要求ゼロ査定", "前年シートで概算要求があったのに、翌年の当初予算が 0"},
+}
+
+// DetectLoop は翌年のシートと突き合わせたループから兆候を判定する。
+func DetectLoop(lp Loop) Signal {
+	var s Signal
+	if lp.Verdict == VerdictContradiction {
+		s |= SignalReflectionContradicted
+	}
+	if lp.Closed && lp.NextRequest.Valid && lp.NextRequest.Value > 0 && lp.NextInitial.Valid && lp.NextInitial.Value == 0 {
+		s |= SignalRequestZeroed
+	}
+	return s
 }
 
 // Detect は Lifecycle から断絶の兆候を判定する。判定は Lifecycle のフィールドだけから求める。

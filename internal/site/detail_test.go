@@ -12,9 +12,9 @@ import (
 func TestDetailEscapesHTML(t *testing.T) {
 	s := &rs.Sheet{FiscalYear: 2024, Project: rs.Project{ID: "1", Name: `<script>alert("x")</script>`, Ministry: "A&B"},
 		Evaluation: rs.Evaluation{SelfCheck: "<b>bold</b>"}}
-	lc := lifecycle.Build(s, lifecycle.Options{})
+	tl := lifecycle.Track([]*rs.Sheet{s}, lifecycle.Thresholds{})
 	var buf bytes.Buffer
-	if err := writeDetail(&buf, lc, lifecycle.Summarize(lc, lifecycle.Thresholds{}), "now"); err != nil {
+	if err := writeDetail(&buf, tl, lifecycle.SummarizeTimeline(tl, lifecycle.Thresholds{}), "now"); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()

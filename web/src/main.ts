@@ -4,6 +4,7 @@ import { h } from "./dom.ts";
 import { buildHash, parseHash } from "./state.ts";
 import { renderGaps } from "./views/gaps.ts";
 import { renderList } from "./views/list.ts";
+import { renderLoops } from "./views/loops.ts";
 import { renderOutcomes } from "./views/outcomes.ts";
 
 function main() {
@@ -36,6 +37,9 @@ function main() {
         break;
       case "outcomes":
         renderOutcomes(root, rows, meta, params, update);
+        break;
+      case "loops":
+        renderLoops(root, rows, meta, params, update);
         break;
       default:
         renderList(root, rows, meta, params, update);

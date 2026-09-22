@@ -7,9 +7,12 @@ go build ./cmd/zailoop
 ./zailoop fetch --year 2024          # data/ に配布 ZIP を取得・展開（各ファイル 1 回だけ）
 ./zailoop show 884 --year 2024       # 予算事業ID 884 のライフサイクルを表示
 ./zailoop build --out site           # 全事業の静的サイトを生成（index.html / list.html / p/<ID>.html）
+./zailoop fetch --year 2025
+./zailoop show 884 --years 2024,2025 # 2 年度を結合し、推移とループ検証（評価・反映 → 翌年の成立）を表示
+./zailoop build --years 2024,2025 --out site
 ```
 
-`site/index.html` はブラウザで直接開けます（file:// 可）。一覧・「ループの断絶」・成果指標の 3 ビューがあり、各事業の詳細ページ（JS なし）に飛べます。断絶判定の閾値は `build` の引数（`--gap-ratio`, `--min-exec-rate`, `--min-unused`, `--unused-ratio`, `--outcome-low`, `--outcome-high`）で変えられます。
+`site/index.html` はブラウザで直接開けます（file:// 可）。一覧・「ループの断絶」・成果指標・「ループ検証」（複数年度のとき）の 4 ビューがあり、各事業の詳細ページ（JS なし）に飛べます。断絶判定の閾値は `build` の引数（`--gap-ratio`, `--min-exec-rate`, `--min-unused`, `--unused-ratio`, `--outcome-low`, `--outcome-high`）で変えられます。
 
 ## フロント（web/）の開発
 

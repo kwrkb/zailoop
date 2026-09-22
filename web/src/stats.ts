@@ -42,3 +42,26 @@ export function countSignals(rows: Row[], codes: string[]): Map<string, number> 
 export function withRates(rows: Row[]): Row[] {
   return rows.filter((r) => r.rates.length > 0);
 }
+
+/** 前年シートの反映状況 × 翌年当初（FY S+1）の増減（減/同/増）のクロス表。比較基準は前年シートの FY S 当初。 */
+export interface CrossCell {
+  reflection: string;
+  down: number;
+  same: number;
+  up: number;
+}
+
+export function crosstab(rows: Row[], order: string[]): CrossCell[] {
+  const m = new Map<string, CrossCell>();
+  for (const r of rows) {
+    if (r.nextInitial === null || r.prevInitial === null) continue;
+    const k = r.prevReflection || "(空)";
+    const c = m.get(k) ?? { reflection: k, down: 0, same: 0, up: 0 };
+    if (r.nextInitial < r.prevInitial) c.down++;
+    else if (r.nextInitial > r.prevInitial) c.up++;
+    else c.same++;
+    m.set(k, c);
+  }
+  const keys = [...order.filter((k) => m.has(k)), ...[...m.keys()].filter((k) => !order.includes(k))];
+  return keys.map((k) => m.get(k)!);
+}

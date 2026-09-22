@@ -55,6 +55,29 @@
 </section>
 {{end}}
 
+{{if .Multi}}
+<section class="timeline">
+  <h2>年度をまたぐ推移 <small>シート: {{range $i, $y := .TL.SheetYears}}{{if $i}}, {{end}}{{$y}}{{end}}年度。重なる年度は新しいシートの値</small></h2>
+  {{if gt (len .TL.Names) 1}}<p class="muted">事業名の変遷: {{range $i, $n := .TL.Names}}{{if $i}} → {{end}}{{$n.SheetYear}}年度〜「{{$n.Name}}」{{end}}</p>{{end}}
+  <table class="timeline">
+    <thead><tr><th>FY</th><th class="num">① 要求</th><th class="num">② 当初</th><th class="num">② 現額</th><th class="num">③ 執行</th><th>③ 執行率</th><th class="num">④ 不用相当</th><th>出典</th></tr></thead>
+    <tbody>{{range .TL.Years}}
+      <tr><th>{{.FY}}</th><td class="num">{{yen .Request}}</td><td class="num">{{yen .Initial}}</td><td class="num">{{yen .Current}}</td><td class="num">{{execText .}}</td><td>{{if isOK .ExecState}}{{ratio .ExecRate}}{{else}}—{{end}}</td><td class="num">{{unusedText .}}</td><td class="muted">{{.Source}}年度シート{{if .Revised}}（改訂）{{end}}</td></tr>
+    {{end}}</tbody>
+  </table>
+  <h3>ループ検証 <small class="muted">シートの評価・反映 → 翌年の成立・執行</small></h3>
+  {{range .TL.Loops}}
+  <div class="loop {{verdictClass .Verdict}}">
+    <p><strong>{{.SheetYear}}年度シート</strong> 所見「{{or .TeamOpinion "—"}}」 反映「{{or .Reflection "—"}}」{{if .ReflectedGeneral.Valid}} 反映額 {{yen .ReflectedGeneral}}{{end}}</p>
+    <p>FY{{.SheetYear}} 当初 {{yen .Initial}} → FY{{inc .SheetYear}} 要求 {{yen .NextRequest}}
+    {{if .Closed}}→ FY{{inc .SheetYear}} 当初 <strong>{{yen .NextInitial}}</strong>（{{inc .SheetYear}}年度シート）。FY{{.SheetYear}} 執行 {{yen .Executed}}（{{ratio .ExecRate}}）
+    <span class="verdict">判定: {{verdict .Verdict}}</span>{{else}}<span class="muted">→ 翌年のシートがないため未検証</span>{{end}}</p>
+  </div>
+  {{end}}
+  {{if .TL.Notes}}<details><summary>年度間の差異（{{len .TL.Notes}}）</summary><ul>{{range .TL.Notes}}<li>{{.}}</li>{{end}}</ul></details>{{end}}
+</section>
+{{end}}
+
 {{$n := .LC.ActualYear}}
 <section class="stage"><h2>① 要求 <small>FY{{$n}} 概算要求</small></h2>
   <dl><dt>要求額</dt><dd>{{if isOK .LC.Request.State}}{{yen .LC.Request.Amount}}{{else}}{{state .LC.Request.State}}{{end}}</dd></dl>

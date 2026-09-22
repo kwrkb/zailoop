@@ -22,7 +22,7 @@ func TestEachMatchesLoadSheet(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(ids, []string{"11", "884", "3522", "18556"}) {
+	if !slices.Equal(ids, []string{"11", "884", "1319", "3522", "18556"}) {
 		t.Fatalf("IDs = %v", ids)
 	}
 	// Compare after traversal to also catch reused buffers or builder state.

@@ -40,11 +40,22 @@ export type SortKey =
   | "nextRequest"
   | "signals"
   | "minRate"
-  | "maxRate";
+  | "maxRate"
+  | "verdict"
+  | "delta";
 
 export type SortDir = "asc" | "desc";
 
-const SORT_KEYS: SortKey[] = ["id", "request", "initial", "current", "executed", "execRate", "unused", "nextRequest", "signals", "minRate", "maxRate"];
+const SORT_KEYS: SortKey[] = ["id", "request", "initial", "current", "executed", "execRate", "unused", "nextRequest", "signals", "minRate", "maxRate", "verdict", "delta"];
+
+/**
+ * 前年シートの反映が翌年の当初予算にどう出たか: FY S+1 当初（当年シートの nextInitial）− FY S 当初（前年シートの prevInitial）。
+ * どちらか無ければ null。
+ */
+export function initialDelta(r: Row): number | null {
+  if (r.nextInitial === null || r.prevInitial === null) return null;
+  return r.nextInitial - r.prevInitial;
+}
 
 /** ソートキーの値。null は常に末尾。 */
 export function sortValue(r: Row, key: SortKey): number | null {
@@ -71,6 +82,10 @@ export function sortValue(r: Row, key: SortKey): number | null {
       return r.rates.length ? Math.min(...r.rates) : null;
     case "maxRate":
       return r.rates.length ? Math.max(...r.rates) : null;
+    case "verdict":
+      return r.verdict;
+    case "delta":
+      return initialDelta(r);
   }
 }
 

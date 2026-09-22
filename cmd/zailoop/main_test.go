@@ -73,3 +73,17 @@ func TestParseInterspersedUnknownFlag(t *testing.T) {
 		t.Fatal("expected error for unknown flag")
 	}
 }
+
+func TestParseYears(t *testing.T) {
+	if ys, err := parseYears("", 2024); err != nil || !reflect.DeepEqual(ys, []int{2024}) {
+		t.Errorf("default: %v %v", ys, err)
+	}
+	if ys, err := parseYears("2025, 2024", 2024); err != nil || !reflect.DeepEqual(ys, []int{2024, 2025}) {
+		t.Errorf("sorted: %v %v", ys, err)
+	}
+	for _, bad := range []string{"2024,2024", "abc", "1999", ","} {
+		if _, err := parseYears(bad, 2024); err == nil {
+			t.Errorf("expected error for %q", bad)
+		}
+	}
+}

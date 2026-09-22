@@ -1,12 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalize, applyFilter, sortRows, parseSort } from "../src/filter.ts";
+import { normalize, applyFilter, sortRows, parseSort, initialDelta } from "../src/filter.ts";
 import type { Row } from "../src/data.ts";
 
 const row = (o: Partial<Row>): Row => ({
   id: "1", name: "", ministry: "", category: "", reflection: "", request: null, initial: null, current: null, executed: null,
   execRate: null, execState: "", carriedOut: null, unused: null, unusedDiff: null, unusedState: "", reflected: null,
-  nextInitial: null, nextRequest: null, byYear: [], outcomes: 0, rates: [], signals: 0, signalCodes: [], ...o,
+  nextInitial: null, nextRequest: null, byYear: [], outcomes: 0, rates: [], signals: 0, signalCodes: [], prevReflection: "", prevInitial: null, verdict: 0, renamed: false, ...o,
 });
 
 test("normalize folds width and case", () => {
@@ -37,4 +37,13 @@ test("parseSort falls back on bad input", () => {
   assert.deepEqual(parseSort("initial:desc"), { key: "initial", dir: "desc" });
   assert.deepEqual(parseSort("bogus:up"), { key: "id", dir: "asc" });
   assert.deepEqual(parseSort(null, "execRate", "asc"), { key: "execRate", dir: "asc" });
+});
+
+test("initialDelta and delta sort", () => {
+  const a = row({ id: "a", nextInitial: 120, prevInitial: 100 });
+  const b = row({ id: "b", nextInitial: 80, prevInitial: 100 });
+  const c = row({ id: "c", nextInitial: 80, prevInitial: null });
+  assert.equal(initialDelta(a), 20);
+  assert.equal(initialDelta(c), null);
+  assert.deepEqual(sortRows([c, b, a], "delta", "desc").map((r) => r.id), ["a", "b", "c"]);
 });

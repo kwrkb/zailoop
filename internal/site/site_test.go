@@ -21,7 +21,7 @@ func TestBuild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if st.Projects != 4 || st.Bytes == 0 {
+	if st.Projects != 5 || st.Bytes == 0 {
 		t.Errorf("stats = %+v", st)
 	}
 	for _, f := range []string{"index.html", "list.html", "p/11.html", "p/884.html", "p/3522.html", "p/18556.html", "assets/style.css", "assets/app.js"} {
@@ -55,7 +55,7 @@ func TestBuild(t *testing.T) {
 	if err := json.Unmarshal([]byte(raw), &p); err != nil {
 		t.Fatalf("embedded JSON invalid: %v\n%s", err, raw[:200])
 	}
-	if p.Meta.Count != 4 || p.Meta.SheetYear != 2024 || p.Meta.ActualYear != 2023 || len(p.Rows) != 4 || len(p.Meta.Signals) == 0 {
+	if p.Meta.Count != 5 || p.Meta.SheetYear != 2024 || p.Meta.ActualYear != 2023 || len(p.Rows) != 5 || len(p.Meta.Signals) == 0 {
 		t.Errorf("payload meta = %+v rows=%d", p.Meta, len(p.Rows))
 	}
 	var r884 *Row
@@ -92,4 +92,50 @@ func (s sheetSource) Each(fn func(*rs.Sheet) error) error {
 		}
 	}
 	return nil
+}
+
+func TestBuildMultiYear(t *testing.T) {
+	out := t.TempDir()
+	src := rs.Multi{Dirs: []rs.Dir{
+		{Path: filepath.Join("..", "..", "testdata", "2024"), Year: 2024},
+		{Path: filepath.Join("..", "..", "testdata", "2025"), Year: 2025},
+	}}
+	st, err := BuildMulti(src, out, Options{Now: func() time.Time { return time.Date(2026, 9, 22, 12, 0, 0, 0, time.UTC) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Projects != 6 { // 11, 884, 1319, 3522, 18556, 21625（1319 は両年度、21625 は 2025 のみ）
+		t.Errorf("projects = %d", st.Projects)
+	}
+	detail, _ := os.ReadFile(filepath.Join(out, "p", "884.html"))
+	for _, want := range []string{"年度をまたぐ推移", "ループ検証", "2024年度シート", "反映「縮減」", "2025年度シート", "判定: "} {
+		if !strings.Contains(string(detail), want) {
+			t.Errorf("p/884.html missing %q", want)
+		}
+	}
+	renamed, _ := os.ReadFile(filepath.Join(out, "p", "1319.html"))
+	if !strings.Contains(string(renamed), "事業名の変遷") {
+		t.Errorf("p/1319.html should show name history")
+	}
+	index, _ := os.ReadFile(filepath.Join(out, "index.html"))
+	s := string(index)
+	i := strings.Index(s, `<script id="zailoop-data" type="application/json">`) + len(`<script id="zailoop-data" type="application/json">`)
+	j := strings.Index(s[i:], "</script>")
+	var p Payload
+	if err := json.Unmarshal([]byte(s[i:i+j]), &p); err != nil {
+		t.Fatal(err)
+	}
+	if p.Meta.SheetYear != 2025 || p.Meta.ActualYear != 2024 || len(p.Meta.SheetYears) != 2 || p.Meta.SheetYears[0] != 2024 {
+		t.Errorf("meta = %+v", p.Meta)
+	}
+	for _, r := range p.Rows {
+		if r.ID == "884" {
+			if r.PrevRefl == 0 || p.Meta.Reflections[r.PrevRefl-1] != "縮減" || r.PrevInit == nil || *r.PrevInit != 11169000 || r.Verdict == 0 || r.Renamed {
+				t.Errorf("row 884 = %+v (renamed=%v)", r, r.Renamed)
+			}
+		}
+		if r.ID == "1319" && !r.Renamed {
+			t.Errorf("row 1319 should be renamed")
+		}
+	}
 }

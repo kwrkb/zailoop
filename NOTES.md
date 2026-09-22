@@ -19,6 +19,13 @@
 - `site/p/<ID>.html` 事業詳細（JS なし、相対パスで `../assets/`）
 - 一覧 JSON のキーは `internal/site/index.go` の `Row`、デコードは `web/src/data.ts`
 
+## 複数年度（rs.Multi / lifecycle.Track）
+
+- `rs.Multi{Dirs}` は各年度の `Dir` のイテレータを並走させ、同じ ID のシートを年度順に `[]*Sheet` で渡す。`Dir.Year` と CSV の事業年度が違えばエラー
+- `lifecycle.Track(sheets)` → `Timeline{Years, Loops, Names, Notes}`。`Years` は予算年度ごとに最新シートの値、`Loops` はシート S の反映 → S+1 の当初・執行
+- `SummarizeTimeline` は最新シートの `Summary` に `PrevReflection / PrevInitial / LoopVerdict / Renamed` を足す。JSON キーは `pr, pi, lv, rn`
+- フロントの「ループ検証」ビュー（`web/src/views/loops.ts`）は `nextInitial − prevInitial` で増減を出す（判定自体は Go の Verdict）
+
 ## 全事業の読み取り（rs.Each）
 
 6 ファイルを `groupReader` で同時に開き、各ファイルの「同一 ID の連続行」を ID 昇順にマージして 1 事業ずつ `Sheet` を組み立てる。ID が昇順でなければ `ErrUnordered`。`LoadSheet` も同じ `builder`/`table` を使う。
@@ -27,7 +34,7 @@
 
 - `data/raw/<name>.zip` 取得した ZIP（不正なものは `.bad` に退避）
 - `data/csv/<name>.csv` 展開した CSV
-- `testdata/2024/` 4 事業分の抜粋（ID 11, 884, 3522, 18556）
+- `testdata/2024/` 5 事業分の抜粋（ID 11, 884, 1319, 3522, 18556）、`testdata/2025/` 同 6 事業（+21625）
 
 ## 年度の対応（lifecycle）
 

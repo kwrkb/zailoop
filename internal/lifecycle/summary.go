@@ -30,6 +30,13 @@ type Summary struct {
 	OutcomeCount  int      // アウトカム指標数
 	OutcomeRates  []float64
 	Signals       Signal
+
+	// 複数年度（SummarizeTimeline）でだけ埋まる
+	SheetYears     []int       // 手元にあるシートの事業年度
+	PrevReflection string      // 前年シートの反映状況
+	PrevInitial    rs.Yen      // 前年シートの FY S 当初（= 当年当初と比較する基準）
+	LoopVerdict    LoopVerdict // 前年シートの反映 → 当年当初の整合
+	Renamed        bool        // 事業名が年度間で変わった
 }
 
 // Summarize は Lifecycle から一覧用サマリを作る。

@@ -12,6 +12,8 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,9 +28,10 @@ const usage = `zailoop: 予算事業のライフサイクル（要求→成立�
 
 使い方:
   zailoop fetch [--year 2024] [--data data]      配布 ZIP を取得して展開する（既存はスキップ）
-  zailoop show <予算事業ID> [--year 2024] [--data data]
+  zailoop show <予算事業ID> [--year 2024 | --years 2024,2025] [--data data]
                                                   1 事業のライフサイクルを表示する
-  zailoop build [--out site] [--year 2024] [--data data] [閾値オプション]
+                                                  --years で複数年度を結合し、推移とループ検証を加える
+  zailoop build [--out site] [--year 2024 | --years 2024,2025] [--data data] [閾値オプション]
                                                   全事業の静的サイトを生成する
     閾値: --gap-ratio 0.5 --min-exec-rate 0.5 --min-unused 1000000000
           --unused-ratio 0.2 --outcome-low 80 --outcome-high 200
@@ -73,6 +76,47 @@ func commonFlags(fs *flag.FlagSet) (*int, *string) {
 	year := fs.Int("year", 2024, "事業年度")
 	data := fs.String("data", "data", "データディレクトリ")
 	return year, data
+}
+
+// yearsFlag は --years 2024,2025 を解析する。未指定なら --year 1 つ。
+func yearsFlag(fs *flag.FlagSet) *string {
+	return fs.String("years", "", "結合する事業年度をカンマ区切りで（例: 2024,2025）。未指定なら --year のみ")
+}
+
+func parseYears(years string, year int) ([]int, error) {
+	if strings.TrimSpace(years) == "" {
+		return []int{year}, nil
+	}
+	var out []int
+	seen := map[int]bool{}
+	for _, p := range strings.Split(years, ",") {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		y, err := strconv.Atoi(p)
+		if err != nil || y < 2000 || y > 2100 {
+			return nil, fmt.Errorf("%w: --years の値 %q が年度ではありません", errUsage, p)
+		}
+		if seen[y] {
+			return nil, fmt.Errorf("%w: --years に %d が重複しています", errUsage, y)
+		}
+		seen[y] = true
+		out = append(out, y)
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("%w: --years が空です", errUsage)
+	}
+	sort.Ints(out)
+	return out, nil
+}
+
+func dirsFor(data string, years []int) []rs.Dir {
+	var dirs []rs.Dir
+	for _, y := range years {
+		dirs = append(dirs, rs.Dir{Path: filepath.Join(data, "csv"), Year: y})
+	}
+	return dirs
 }
 
 // parseInterspersed はフラグと位置引数の順序を問わずに解析し、位置引数を返す。
@@ -139,6 +183,7 @@ func runFetch(args []string) error {
 func runShow(args []string) error {
 	fs := flag.NewFlagSet("show", flag.ContinueOnError)
 	year, data := commonFlags(fs)
+	years := yearsFlag(fs)
 	pos, err := parseInterspersed(fs, args)
 	if errors.Is(err, flag.ErrHelp) {
 		return nil
@@ -150,21 +195,34 @@ func runShow(args []string) error {
 		return fmt.Errorf("%w: show には予算事業ID を 1 つ指定する", errUsage)
 	}
 	id := pos[0]
-	dir := rs.Dir{Path: filepath.Join(*data, "csv"), Year: *year}
-	sheet, err := dir.LoadSheet(id)
+	ys, err := parseYears(*years, *year)
 	if err != nil {
-		if errors.Is(err, rs.ErrNotFound) {
-			return fmt.Errorf("予算事業ID %s は %d 年度のデータにありません", id, *year)
-		}
 		return err
 	}
-	lc := lifecycle.Build(sheet, lifecycle.Options{})
-	return render.Text(os.Stdout, lc)
+	var sheets []*rs.Sheet
+	for _, dir := range dirsFor(*data, ys) {
+		sheet, err := dir.LoadSheet(id)
+		if errors.Is(err, rs.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		sheets = append(sheets, sheet)
+	}
+	if len(sheets) == 0 {
+		return fmt.Errorf("予算事業ID %s は %v 年度のデータにありません", id, ys)
+	}
+	if len(ys) == 1 {
+		return render.Text(os.Stdout, lifecycle.Build(sheets[0], lifecycle.Options{}))
+	}
+	return render.Timeline(os.Stdout, lifecycle.Track(sheets, lifecycle.Thresholds{}))
 }
 
 func runBuild(args []string) error {
 	fs := flag.NewFlagSet("build", flag.ContinueOnError)
 	year, data := commonFlags(fs)
+	years := yearsFlag(fs)
 	out := fs.String("out", "site", "出力ディレクトリ")
 	d := lifecycle.DefaultThresholds()
 	var th lifecycle.Thresholds
@@ -184,8 +242,11 @@ func runBuild(args []string) error {
 	if len(pos) != 0 {
 		return fmt.Errorf("%w: build は位置引数を取りません: %v", errUsage, pos)
 	}
-	dir := rs.Dir{Path: filepath.Join(*data, "csv"), Year: *year}
-	st, err := site.Build(dir, *out, site.Options{Year: *year, Thresholds: th, Log: os.Stderr})
+	ys, err := parseYears(*years, *year)
+	if err != nil {
+		return err
+	}
+	st, err := site.BuildMulti(rs.Multi{Dirs: dirsFor(*data, ys)}, *out, site.Options{Year: ys[len(ys)-1], Thresholds: th, Log: os.Stderr})
 	if err != nil {
 		return err
 	}

@@ -36,6 +36,10 @@ type Row struct {
 	Outcomes   int       `json:"oc,omitempty"` // アウトカム指標数
 	Rates      []float64 `json:"or,omitempty"` // 達成率（%）
 	Signals    uint16    `json:"sg,omitempty"` // Signal ビット
+	PrevRefl   int       `json:"pr,omitempty"` // 前年シートの反映状況（Meta.Reflections の添字 + 1。0 はなし）
+	PrevInit   *int64    `json:"pi,omitempty"` // 前年シートの FY S 当初（当年当初との比較基準）
+	Verdict    int       `json:"lv,omitempty"` // LoopVerdict（0 不明 1 対象外 2 整合 3 矛盾）
+	Renamed    bool      `json:"rn,omitempty"` // 事業名が年度間で変わった
 }
 
 // SignalMeta は Signal の説明と件数。
@@ -57,6 +61,7 @@ type Meta struct {
 	Reflections []string             `json:"reflections"`
 	Signals     []SignalMeta         `json:"signals"`
 	Thresholds  lifecycle.Thresholds `json:"thresholds"`
+	SheetYears  []int                `json:"sheetYears"` // 結合したシートの事業年度
 	Count       int                  `json:"count"`
 	Attribution string               `json:"attribution"`
 	Generated   string               `json:"generated"`
@@ -70,6 +75,7 @@ type Payload struct {
 
 // indexBuilder は Summary を Row に変換しつつ meta の辞書を育てる。
 type indexBuilder struct {
+	sheetYears  map[int]bool
 	years       []int
 	ministries  dict
 	categories  dict
@@ -96,7 +102,7 @@ func (d *dict) get(s string) int {
 }
 
 func newIndexBuilder(sheetYear int) *indexBuilder {
-	b := &indexBuilder{counts: map[lifecycle.Signal]int{}}
+	b := &indexBuilder{counts: map[lifecycle.Signal]int{}, sheetYears: map[int]bool{}}
 	for y := sheetYear - 3; y <= sheetYear; y++ {
 		b.years = append(b.years, y)
 	}
@@ -114,6 +120,15 @@ func (b *indexBuilder) add(sm lifecycle.Summary) {
 	}
 	if sm.Reflection != "" {
 		r.Reflection = b.reflections.get(sm.Reflection)
+	}
+	if sm.PrevReflection != "" {
+		r.PrevRefl = b.reflections.get(sm.PrevReflection) + 1
+	}
+	r.PrevInit = yenPtr(sm.PrevInitial)
+	r.Verdict = int(sm.LoopVerdict)
+	r.Renamed = sm.Renamed
+	for _, y := range sm.SheetYears {
+		b.sheetYears[y] = true
 	}
 	if sm.ExecRate.Valid {
 		v := math.Round(sm.ExecRate.Value*1000) / 1000
@@ -150,9 +165,17 @@ func (b *indexBuilder) payload(sheetYear, actualYear int, th lifecycle.Threshold
 	for _, d := range lifecycle.SignalInfo {
 		sigs = append(sigs, SignalMeta{Bit: uint16(d.Signal), Code: d.Code, Label: d.Label, Description: d.Description, Count: b.counts[d.Signal]})
 	}
+	var sheetYears []int
+	for y := range b.sheetYears {
+		sheetYears = append(sheetYears, y)
+	}
+	sort.Ints(sheetYears)
+	if sheetYears == nil {
+		sheetYears = []int{sheetYear}
+	}
 	return Payload{
 		Meta: Meta{
-			SheetYear: sheetYear, ActualYear: actualYear, Years: b.years,
+			SheetYear: sheetYear, ActualYear: actualYear, Years: b.years, SheetYears: sheetYears,
 			Ministries: nonNil(b.ministries.list), Categories: nonNil(b.categories.list), Reflections: nonNil(b.reflections.list),
 			Signals: sigs, Thresholds: th, Count: len(b.rows), Attribution: render.Attribution, Generated: generated,
 		},

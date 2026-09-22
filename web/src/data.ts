@@ -27,6 +27,7 @@ export interface Meta {
   reflections: string[];
   signals: SignalMeta[];
   thresholds: Thresholds;
+  sheetYears: number[];
   count: number;
   attribution: string;
   generated: string;
@@ -55,6 +56,10 @@ export interface RawRow {
   oc?: number;
   or?: number[];
   sg?: number;
+  pr?: number;
+  pi?: number;
+  lv?: number;
+  rn?: boolean;
 }
 
 export interface Payload {
@@ -87,7 +92,15 @@ export interface Row {
   rates: number[];
   signals: number;
   signalCodes: string[];
+  /** 前年シートの反映状況（複数年度のときだけ） */
+  prevReflection: string;
+  prevInitial: number | null;
+  /** 0 不明 / 1 対象外 / 2 整合 / 3 矛盾 */
+  verdict: number;
+  renamed: boolean;
 }
+
+export const VERDICT_LABEL: Record<number, string> = { 0: "不明", 1: "判定対象外", 2: "整合", 3: "矛盾" };
 
 const n = (v: number | undefined): number | null => (v === undefined ? null : v);
 
@@ -117,6 +130,10 @@ export function decodeRow(r: RawRow, meta: Meta): Row {
     rates: r.or ?? [],
     signals: sg,
     signalCodes: meta.signals.filter((s) => (sg & s.bit) !== 0).map((s) => s.code),
+    prevReflection: r.pr && r.pr > 0 ? (meta.reflections[r.pr - 1] ?? "") : "",
+    prevInitial: n(r.pi),
+    verdict: r.lv ?? 0,
+    renamed: r.rn ?? false,
   };
 }
 

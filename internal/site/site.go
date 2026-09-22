@@ -29,6 +29,18 @@ type Source interface {
 	Each(fn func(*rs.Sheet) error) error
 }
 
+// MultiSource は同じ事業の複数年度シートをまとめて供給する。rs.Multi が満たす。
+type MultiSource interface {
+	Each(fn func([]*rs.Sheet) error) error
+}
+
+// single は Source を MultiSource に持ち上げる。
+type single struct{ Source }
+
+func (s single) Each(fn func([]*rs.Sheet) error) error {
+	return s.Source.Each(func(sh *rs.Sheet) error { return fn([]*rs.Sheet{sh}) })
+}
+
 // Options は Build の設定。
 type Options struct {
 	Year       int                  // 事業年度（meta 用。0 なら最初の Sheet から取る）
@@ -47,8 +59,13 @@ type Stats struct {
 
 var idPattern = regexp.MustCompile(`^[0-9]+$`)
 
-// Build は src の全事業を out 配下に書き出す。
+// Build は src の全事業を out 配下に書き出す（単年度）。
 func Build(src Source, out string, opt Options) (Stats, error) {
+	return BuildMulti(single{src}, out, opt)
+}
+
+// BuildMulti は複数年度のシートを束ねて書き出す。最新シートを基準にし、推移とループ検証を加える。
+func BuildMulti(src MultiSource, out string, opt Options) (Stats, error) {
 	start := time.Now()
 	if opt.TopBlocks == 0 {
 		opt.TopBlocks = 10
@@ -65,11 +82,21 @@ func Build(src Source, out string, opt Options) (Stats, error) {
 	var st Stats
 	var ib *indexBuilder
 	sheetYear, actualYear := opt.Year, 0
-	err := src.Each(func(s *rs.Sheet) error {
-		if !idPattern.MatchString(s.Project.ID) {
-			return fmt.Errorf("予算事業ID %q はファイル名に使えません", s.Project.ID)
+	err := src.Each(func(sheets []*rs.Sheet) error {
+		tl := lifecycle.Track(sheets, opt.Thresholds)
+		if tl == nil {
+			return nil
 		}
-		lc := lifecycle.Build(s, lifecycle.Options{TopBlocks: opt.TopBlocks})
+		if !idPattern.MatchString(tl.ID) {
+			return fmt.Errorf("予算事業ID %q はファイル名に使えません", tl.ID)
+		}
+		lc := lifecycle.Build(sheets[len(sheets)-1], lifecycle.Options{TopBlocks: opt.TopBlocks})
+		for _, sh := range sheets {
+			if sh.FiscalYear > lc.SheetYear {
+				lc = lifecycle.Build(sh, lifecycle.Options{TopBlocks: opt.TopBlocks})
+			}
+		}
+		tl.Latest = lc
 		if ib == nil {
 			if sheetYear == 0 {
 				sheetYear = lc.SheetYear
@@ -77,9 +104,9 @@ func Build(src Source, out string, opt Options) (Stats, error) {
 			actualYear = lc.ActualYear
 			ib = newIndexBuilder(sheetYear)
 		}
-		sm := lifecycle.Summarize(lc, opt.Thresholds)
-		n, err := writeFile(filepath.Join(out, "p", s.Project.ID+".html"), func(w io.Writer) error {
-			return writeDetail(w, lc, sm, generated)
+		sm := lifecycle.SummarizeTimeline(tl, opt.Thresholds)
+		n, err := writeFile(filepath.Join(out, "p", tl.ID+".html"), func(w io.Writer) error {
+			return writeDetail(w, tl, sm, generated)
 		})
 		if err != nil {
 			return err

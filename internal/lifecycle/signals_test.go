@@ -92,7 +92,7 @@ func TestSignalInfoCoversAll(t *testing.T) {
 		}
 		all |= d.Signal
 	}
-	if all != SignalRequestGap|SignalLowExecution|SignalLargeUnused|SignalCut|SignalExecutionWithoutBudget|SignalNegativeUnused|SignalOutcomeShortfall|SignalOutcomeOvershoot|SignalNoOutcomeActual {
+	if all != SignalRequestGap|SignalLowExecution|SignalLargeUnused|SignalCut|SignalExecutionWithoutBudget|SignalNegativeUnused|SignalOutcomeShortfall|SignalOutcomeOvershoot|SignalNoOutcomeActual|SignalReflectionContradicted|SignalRequestZeroed {
 		t.Errorf("SignalInfo does not cover all signals: %b", all)
 	}
 }

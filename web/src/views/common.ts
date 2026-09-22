@@ -1,4 +1,5 @@
-import type { Meta, Row } from "../data.ts";
+import { VERDICT_LABEL, type Meta, type Row } from "../data.ts";
+import { initialDelta } from "../filter.ts";
 import { h, raw } from "../dom.ts";
 import { yenFull, yenShort, pct } from "../format.ts";
 import { bar, sparkline } from "../svg.ts";
@@ -80,4 +81,19 @@ export function sortOptions(extra: { value: string; label: string }[] = []): { v
 
 export function summaryLine(n: number, total: number): HTMLElement {
   return h("p", { class: "count muted" }, `${n.toLocaleString("ja-JP")} / ${total.toLocaleString("ja-JP")} 事業`);
+}
+
+/** 前年シートの反映状況 → 翌年当初（FY S+1）の増減セル。複数年度のときだけ意味を持つ。 */
+export function loopCell(r: Row): HTMLElement {
+  const d = initialDelta(r);
+  if (!r.prevReflection && d === null) return h("td", { class: "muted" }, "—");
+  const cls = r.verdict === 3 ? "bad" : r.verdict === 2 ? "good" : "";
+  const arrow = d === null ? "" : d < 0 ? "↓" : d > 0 ? "↑" : "→";
+  return h(
+    "td",
+    { class: `loop ${cls}`, title: d === null ? "" : `翌年当初の増減 ${yenFull(d)}（${VERDICT_LABEL[r.verdict] ?? ""}）` },
+    r.prevReflection || "(空)",
+    " ",
+    h("span", { class: "arrow" }, arrow, d === null ? "" : ` ${yenShort(Math.abs(d))}`),
+  );
 }

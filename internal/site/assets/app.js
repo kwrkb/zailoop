@@ -1,6 +1,7 @@
 "use strict";
 (() => {
   // src/data.ts
+  var VERDICT_LABEL = { 0: "\u4E0D\u660E", 1: "\u5224\u5B9A\u5BFE\u8C61\u5916", 2: "\u6574\u5408", 3: "\u77DB\u76FE" };
   var n = (v) => v === void 0 ? null : v;
   function decodeRow(r, meta) {
     const sg = r.sg ?? 0;
@@ -27,7 +28,11 @@
       outcomes: r.oc ?? 0,
       rates: r.or ?? [],
       signals: sg,
-      signalCodes: meta.signals.filter((s) => (sg & s.bit) !== 0).map((s) => s.code)
+      signalCodes: meta.signals.filter((s) => (sg & s.bit) !== 0).map((s) => s.code),
+      prevReflection: r.pr && r.pr > 0 ? meta.reflections[r.pr - 1] ?? "" : "",
+      prevInitial: n(r.pi),
+      verdict: r.lv ?? 0,
+      renamed: r.rn ?? false
     };
   }
   function decode(p) {
@@ -91,7 +96,11 @@
       return true;
     });
   }
-  var SORT_KEYS = ["id", "request", "initial", "current", "executed", "execRate", "unused", "nextRequest", "signals", "minRate", "maxRate"];
+  var SORT_KEYS = ["id", "request", "initial", "current", "executed", "execRate", "unused", "nextRequest", "signals", "minRate", "maxRate", "verdict", "delta"];
+  function initialDelta(r) {
+    if (r.nextInitial === null || r.prevInitial === null) return null;
+    return r.nextInitial - r.prevInitial;
+  }
   function sortValue(r, key) {
     switch (key) {
       case "id":
@@ -116,6 +125,10 @@
         return r.rates.length ? Math.min(...r.rates) : null;
       case "maxRate":
         return r.rates.length ? Math.max(...r.rates) : null;
+      case "verdict":
+        return r.verdict;
+      case "delta":
+        return initialDelta(r);
     }
   }
   function sortRows(rows, key, dir) {
@@ -192,6 +205,20 @@
   }
   function withRates(rows) {
     return rows.filter((r) => r.rates.length > 0);
+  }
+  function crosstab(rows, order) {
+    const m = /* @__PURE__ */ new Map();
+    for (const r of rows) {
+      if (r.nextInitial === null || r.prevInitial === null) continue;
+      const k = r.prevReflection || "(\u7A7A)";
+      const c = m.get(k) ?? { reflection: k, down: 0, same: 0, up: 0 };
+      if (r.nextInitial < r.prevInitial) c.down++;
+      else if (r.nextInitial > r.prevInitial) c.up++;
+      else c.same++;
+      m.set(k, c);
+    }
+    const keys = [...order.filter((k) => m.has(k)), ...[...m.keys()].filter((k) => !order.includes(k))];
+    return keys.map((k) => m.get(k));
   }
 
   // src/svg.ts
@@ -280,6 +307,19 @@
   function summaryLine(n2, total) {
     return h("p", { class: "count muted" }, `${n2.toLocaleString("ja-JP")} / ${total.toLocaleString("ja-JP")} \u4E8B\u696D`);
   }
+  function loopCell(r) {
+    const d = initialDelta(r);
+    if (!r.prevReflection && d === null) return h("td", { class: "muted" }, "\u2014");
+    const cls = r.verdict === 3 ? "bad" : r.verdict === 2 ? "good" : "";
+    const arrow = d === null ? "" : d < 0 ? "\u2193" : d > 0 ? "\u2191" : "\u2192";
+    return h(
+      "td",
+      { class: `loop ${cls}`, title: d === null ? "" : `\u7FCC\u5E74\u5F53\u521D\u306E\u5897\u6E1B ${yenFull(d)}\uFF08${VERDICT_LABEL[r.verdict] ?? ""}\uFF09` },
+      r.prevReflection || "(\u7A7A)",
+      " ",
+      h("span", { class: "arrow" }, arrow, d === null ? "" : ` ${yenShort(Math.abs(d))}`)
+    );
+  }
 
   // src/views/gaps.ts
   function thresholdText(code, meta) {
@@ -305,6 +345,7 @@
     const m = params.get("m") ?? "";
     const sort = parseSort(params.get("sort"), "signals", "desc");
     const shown = Number(params.get("n") ?? PAGE) || PAGE;
+    const multi = meta.sheetYears.length > 1;
     const set = (k, v) => {
       const p = new URLSearchParams(params);
       if (v) p.set(k, v);
@@ -368,7 +409,8 @@
         yenCell(r.executed),
         rateCell(r),
         yenCell(r.unused, r.unusedState ? "muted" : ""),
-        h("td", {}, r.reflection)
+        h("td", {}, r.reflection),
+        ...multi ? [loopCell(r)] : []
       ),
       shown,
       () => {
@@ -402,7 +444,8 @@
             h("th", { class: "num" }, "\u2462 \u57F7\u884C"),
             h("th", {}, "\u2462 \u57F7\u884C\u7387"),
             h("th", { class: "num" }, "\u2463 \u4E0D\u7528\u76F8\u5F53"),
-            h("th", {}, "\u2465 \u53CD\u6620")
+            h("th", {}, "\u2465 \u53CD\u6620"),
+            ...multi ? [h("th", {}, "\u524D\u5E74\u53CD\u6620\u2192\u5F53\u521D")] : []
           )
         ),
         tbody
@@ -418,6 +461,7 @@
     const c = params.get("c") ?? "";
     const sort = parseSort(params.get("sort"));
     const shown = Number(params.get("n") ?? PAGE) || PAGE;
+    const multi = meta.sheetYears.length > 1;
     const set = (k, v) => {
       const p = new URLSearchParams(params);
       if (v) p.set(k, v);
@@ -456,6 +500,7 @@
         rateCell(r),
         yenCell(r.unused, r.unusedState ? "muted" : ""),
         h("td", {}, r.reflection),
+        ...multi ? [loopCell(r)] : [],
         badges(r, meta)
       ),
       shown,
@@ -489,10 +534,144 @@
             h("th", {}, "\u2462 \u57F7\u884C\u7387"),
             h("th", { class: "num" }, "\u2463 \u4E0D\u7528\u76F8\u5F53"),
             h("th", {}, "\u2465 \u53CD\u6620"),
+            ...multi ? [h("th", {}, "\u524D\u5E74\u53CD\u6620\u2192\u5F53\u521D")] : [],
             h("th", {}, "\u5146\u5019")
           )
         ),
         tbody
+      ),
+      ...more ? [more] : []
+    );
+  }
+
+  // src/views/loops.ts
+  var ORDER = ["\u7E2E\u6E1B", "\u5EC3\u6B62", "\u7D42\u4E86\u4E88\u5B9A", "\u57F7\u884C\u7B49\u6539\u5584", "\u5E74\u5EA6\u5185\u306B\u6539\u5584\u3092\u691C\u8A0E", "\u73FE\u72B6\u901A\u308A", "(\u7A7A)"];
+  function renderLoops(root, rows, meta, params, update) {
+    const m = params.get("m") ?? "";
+    const refl = params.get("r") ?? "";
+    const dir = params.get("d") ?? "";
+    const verdict = params.get("v") ?? "";
+    const sort = parseSort(params.get("sort"), "verdict", "desc");
+    const shown = Number(params.get("n") ?? PAGE) || PAGE;
+    const set = (k, v) => {
+      const p = new URLSearchParams(params);
+      if (v) p.set(k, v);
+      else p.delete(k);
+      p.delete("n");
+      update(p);
+    };
+    const prevYear = meta.sheetYears.length > 1 ? meta.sheetYears[meta.sheetYears.length - 2] ?? null : null;
+    if (prevYear === null) {
+      root.replaceChildren(
+        h("h2", {}, "\u30EB\u30FC\u30D7\u691C\u8A3C"),
+        h("p", { class: "muted" }, "\u3053\u306E\u30B5\u30A4\u30C8\u306F 1 \u5E74\u5EA6\u5206\u306E\u30B7\u30FC\u30C8\u3060\u3051\u3067\u751F\u6210\u3055\u308C\u3066\u3044\u307E\u3059\u3002\u7FCC\u5E74\u306E\u30B7\u30FC\u30C8\u3068\u7A81\u304D\u5408\u308F\u305B\u308B\u306B\u306F zailoop build --years 2024,2025 \u306E\u3088\u3046\u306B\u8907\u6570\u5E74\u5EA6\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044\u3002")
+      );
+      return;
+    }
+    const scoped = applyFilter(rows, { ministry: m });
+    const cells = crosstab(scoped, ORDER);
+    const list = sortRows(
+      scoped.filter((r) => {
+        if (r.nextInitial === null || r.prevInitial === null) return false;
+        if (refl && (r.prevReflection || "(\u7A7A)") !== refl) return false;
+        if (dir === "down" && !(r.nextInitial < r.prevInitial)) return false;
+        if (dir === "same" && r.nextInitial !== r.prevInitial) return false;
+        if (dir === "up" && !(r.nextInitial > r.prevInitial)) return false;
+        if (verdict && String(r.verdict) !== verdict) return false;
+        return true;
+      }),
+      sort.key,
+      sort.dir
+    );
+    const table = h("table", { class: "cross" });
+    table.appendChild(h("thead", {}, h("tr", {}, h("th", {}, `${prevYear}\u5E74\u5EA6\u30B7\u30FC\u30C8\u306E\u53CD\u6620\u72B6\u6CC1`), h("th", { class: "num" }, "\u6E1B\u984D"), h("th", { class: "num" }, "\u540C\u984D"), h("th", { class: "num" }, "\u5897\u984D"))));
+    const tbody = h("tbody");
+    for (const c of cells) {
+      const cell = (d, n2) => h("td", { class: `num ${refl === c.reflection && dir === d ? "on" : ""}` }, h("button", { type: "button", onclick: () => {
+        set("r", c.reflection);
+        set("d", d);
+      } }, String(n2)));
+      const rowEl = h("tr", { class: refl === c.reflection ? "on" : "" }, h("th", {}, h("button", { type: "button", onclick: () => {
+        set("r", c.reflection);
+        set("d", "");
+      } }, c.reflection)), cell("down", c.down), cell("same", c.same), cell("up", c.up));
+      tbody.appendChild(rowEl);
+    }
+    table.appendChild(tbody);
+    const controls = h(
+      "div",
+      { class: "controls" },
+      select("m", ministryOptions(rows, meta), m, (v) => set("m", v)),
+      select(
+        "v",
+        [
+          { value: "", label: "\u5224\u5B9A: \u3059\u3079\u3066" },
+          { value: "3", label: "\u77DB\u76FE\uFF08\u7E2E\u6E1B\u30FB\u5EC3\u6B62\u30FB\u7D42\u4E86\u4E88\u5B9A\u306A\u306E\u306B\u5897\u984D\uFF09" },
+          { value: "2", label: "\u6574\u5408" },
+          { value: "1", label: "\u5224\u5B9A\u5BFE\u8C61\u5916" }
+        ],
+        verdict,
+        (v) => set("v", v)
+      ),
+      select("sort", sortOptions([{ value: "verdict:desc", label: "\u77DB\u76FE\u3092\u4E0A\u306B" }, { value: "delta:desc", label: "\u5897\u984D\u304C\u5927\u304D\u3044\u9806" }, { value: "delta:asc", label: "\u6E1B\u984D\u304C\u5927\u304D\u3044\u9806" }]), `${sort.key}:${sort.dir}`, (v) => set("sort", v)),
+      refl || dir || verdict ? h("button", { type: "button", onclick: () => {
+        const p = new URLSearchParams(params);
+        p.delete("r");
+        p.delete("d");
+        p.delete("v");
+        p.delete("n");
+        update(p);
+      } }, "\u7D5E\u308A\u8FBC\u307F\u3092\u89E3\u9664") : null
+    );
+    const { tbody: listBody, more } = paged(
+      list,
+      (r) => h(
+        "tr",
+        {},
+        h("td", { class: "id" }, r.id),
+        nameCell(r),
+        h("td", {}, r.ministry),
+        loopCell(r),
+        yenCell(r.prevInitial),
+        yenCell(r.nextInitial),
+        h("td", { class: r.verdict === 3 ? "bad" : r.verdict === 2 ? "good" : "muted" }, VERDICT_LABEL[r.verdict] ?? ""),
+        h("td", {}, r.reflection),
+        badges(r, meta)
+      ),
+      shown,
+      () => {
+        const p = new URLSearchParams(params);
+        p.set("n", String(shown + PAGE));
+        update(p);
+      }
+    );
+    root.replaceChildren(
+      h("h2", {}, "\u30EB\u30FC\u30D7\u691C\u8A3C", h("small", { class: "muted" }, ` ${prevYear}\u5E74\u5EA6\u30B7\u30FC\u30C8\u306E\u300C\u6982\u7B97\u8981\u6C42\u3078\u306E\u53CD\u6620\u72B6\u6CC1\u300D\u304C\u3001${prevYear + 1}\u5E74\u5EA6\u30B7\u30FC\u30C8\u306E\u5F53\u521D\u4E88\u7B97\u306B\u3069\u3046\u73FE\u308C\u305F\u304B`)),
+      h("p", { class: "muted" }, `\u6BD4\u8F03\u306F FY${prevYear} \u5F53\u521D\uFF08${prevYear}\u5E74\u5EA6\u30B7\u30FC\u30C8\uFF09\u3068 FY${prevYear + 1} \u5F53\u521D\uFF08${prevYear + 1}\u5E74\u5EA6\u30B7\u30FC\u30C8\uFF09\u3002\u7E2E\u6E1B\u30FB\u5EC3\u6B62\u30FB\u7D42\u4E86\u4E88\u5B9A\u306A\u306E\u306B\u5897\u984D\u306A\u3089\u300C\u77DB\u76FE\u300D\u3002`),
+      controls,
+      table,
+      summaryLine(list.length, scoped.length),
+      h(
+        "table",
+        { class: "rows" },
+        h(
+          "thead",
+          {},
+          h(
+            "tr",
+            {},
+            h("th", {}, "ID"),
+            h("th", {}, "\u4E8B\u696D\u540D"),
+            h("th", {}, "\u5E9C\u7701\u5E81"),
+            h("th", {}, `${prevYear} \u53CD\u6620 \u2192 \u5F53\u521D`),
+            h("th", { class: "num" }, `FY${prevYear} \u5F53\u521D`),
+            h("th", { class: "num" }, `FY${prevYear + 1} \u5F53\u521D`),
+            h("th", {}, "\u5224\u5B9A"),
+            h("th", {}, `${prevYear + 1} \u53CD\u6620`),
+            h("th", {}, "\u5146\u5019")
+          )
+        ),
+        listBody
       ),
       ...more ? [more] : []
     );
@@ -615,6 +794,9 @@
           break;
         case "outcomes":
           renderOutcomes(root, rows, meta, params, update);
+          break;
+        case "loops":
+          renderLoops(root, rows, meta, params, update);
           break;
         default:
           renderList(root, rows, meta, params, update);
