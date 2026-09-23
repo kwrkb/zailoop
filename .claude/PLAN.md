@@ -1,6 +1,6 @@
 # PLAN
 
-現在地: **Phase 3a 完了。次は Phase 3b（2026 年度シート公開後。再開手順は `docs/handoff-phase3b.md`）**
+現在地: **Phase 3a 完了。次は Phase 3b（2026 年度シート公開後。再開手順は `.claude/handoff-phase3b.md`）**
 
 ## Phase 1a: データ調査（完了）
 

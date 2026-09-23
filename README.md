@@ -48,5 +48,4 @@ npx wrangler deploy                               # https://zailoop.kwrkb.worker
 ## ドキュメント
 
 - `VISION.md` 目的・スコープ・設計判断
-- `PLAN.md` フェーズと現在地
 - `docs/data-survey.md` CSV の構造調査と列の対応表

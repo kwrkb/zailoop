@@ -5,6 +5,7 @@
 ## ドキュメント
 
 矛盾時の優先順: VISION.md > PLAN.md > コード > NOTES.md。LESSONS.md は記録。
+VISION.md はルート、PLAN.md・NOTES.md・LESSONS.md・引き継ぎ書は `.claude/`（開発メモ）。
 データの列対応は `docs/data-survey.md` が正。
 
 ## 開発
