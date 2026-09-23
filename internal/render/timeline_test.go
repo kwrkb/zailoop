@@ -25,7 +25,7 @@ func TestTimelineOutput(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := buf.String()
-	for _, want := range []string{"年度をまたぐ推移", "旧名", "新名", "2023 ", "2025 ", "ループ検証", "2024年度シート", "反映「縮減」", "反映額 -5 円", "判定: 矛盾", "翌年のシートがないため未検証", Attribution} {
+	for _, want := range []string{"年度をまたぐ推移", "旧名", "新名", "2023 ", "2025 ", "ループ検証", "2024年度シート", "反映「縮減」", "反映額 -5 円", "判定: 反映要確認（「縮減」だったのに翌年度の当初予算が増えています。事業の再編・移管などの可能性もあります）", "翌年のシートがないため未検証", Attribution} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in:\n%s", want, out)
 		}

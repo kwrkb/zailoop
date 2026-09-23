@@ -169,7 +169,7 @@ export function summaryLine(n: number, total: number): HTMLElement {
 export function loopCell(r: Row): HTMLElement {
   const d = initialDelta(r);
   if (!r.prevReflection && d === null) return h("td", { class: "muted" }, "—");
-  const cls = r.verdict === 3 ? "bad" : r.verdict === 2 ? "good" : "";
+  const cls = r.verdict === 3 ? "attn" : r.verdict === 2 ? "good" : "";
   const arrow = d === null ? "" : d < 0 ? "↓" : d > 0 ? "↑" : "→";
   return h(
     "td",

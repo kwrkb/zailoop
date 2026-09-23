@@ -121,7 +121,7 @@ func TestDigest(t *testing.T) {
 	}
 	s24.Evaluation.Reflection = "廃止"
 	tl = lifecycle.Track([]*rs.Sheet{s24, s25}, lifecycle.Thresholds{})
-	if got := strings.Join(digest(tl), "\n"); !strings.Contains(got, "判定は「矛盾」。") {
+	if got := strings.Join(digest(tl), "\n"); !strings.Contains(got, "判定は「反映要確認」。「廃止」だったのに翌年度の当初予算が増えています。事業の再編・移管などの可能性もあります。") {
 		t.Errorf("contradiction digest:\n%s", got)
 	}
 }

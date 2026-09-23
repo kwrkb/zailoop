@@ -20,7 +20,7 @@ const Attribution = "出典: 行政事業レビュー見える化サイトのデ
 
 // Disclaimer は出典と並べて出す注記。加工した情報を国が作成したかのように見せないため
 // （見える化サイトの利用規約）、非公式であることと、独自の判定であることを明示する。
-const Disclaimer = "zailoop は非公式のツールで、国や府省庁が作成したものではありません。兆候とループ検証は zailoop 独自の判定です。"
+const Disclaimer = "zailoop は非公式のツールで、国や府省庁が作成したものではありません。兆候とループ検証は zailoop 独自の目印で、不正や無駄を判定するものではありません。"
 
 // Text は 1 事業のライフサイクルをテキストで書き出す。
 func Text(w io.Writer, lc *lifecycle.Lifecycle) error {

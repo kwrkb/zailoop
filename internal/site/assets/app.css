@@ -32,7 +32,7 @@ table.rows td.rates { font-size: 0.8rem; max-width: 220px; }
 table.cross { width: auto; margin: 8px 0; } table.cross th, table.cross td { padding: 4px 12px; }
 table.cross button { font: inherit; background: none; border: none; color: var(--link); cursor: pointer; padding: 0; text-decoration: underline; }
 table.cross td.on button, table.cross tr.on th button { font-weight: bold; color: var(--fg); }
-td.loop .arrow { color: var(--muted); } td.loop.bad .arrow, td.bad { color: var(--neg); font-weight: bold; } td.loop.good .arrow, td.good { color: var(--good); }
+td.loop .arrow { color: var(--muted); } td.loop.attn .arrow, td.attn { color: var(--attn); font-weight: bold; } td.loop.good .arrow, td.good { color: var(--good); }
 td.name .stale { display: inline-block; margin-left: 6px; font-size: 0.75rem; color: var(--badgefg); background: var(--badge); border-radius: 999px; padding: 0 8px; }
 @media (max-width: 600px) { table.rows td.name { min-width: 11em; } table.rows th, table.rows td { padding: 6px 6px; } }
 

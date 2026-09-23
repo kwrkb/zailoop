@@ -103,7 +103,7 @@ var SignalInfo = []SignalDesc{
 	{SignalOutcomeShortfall, "outcome_shortfall", "成果未達", "アウトカム達成率の最小値が低い"},
 	{SignalOutcomeOvershoot, "outcome_overshoot", "成果超過", "アウトカム達成率の最大値が高すぎる"},
 	{SignalNoOutcomeActual, "no_outcome_actual", "成果実績なし", "定量的アウトカム指標があるのに確定年度の達成率がない（新規事業を除く）"},
-	{SignalReflectionContradicted, "reflection_contradicted", "反映と逆行", "前年シートの反映状況が縮減・廃止・終了予定なのに、翌年の当初予算が増えた"},
+	{SignalReflectionContradicted, "reflection_contradicted", "反映要確認", "前年シートの反映状況が縮減・廃止・終了予定だったのに、翌年の当初予算が増えた（事業の再編・移管などの可能性もある）"},
 	{SignalRequestZeroed, "request_zeroed", "要求ゼロ査定", "前年シートで概算要求があったのに、翌年の当初予算が 0"},
 }
 

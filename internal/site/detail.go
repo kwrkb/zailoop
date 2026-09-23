@@ -49,12 +49,14 @@ var funcs = template.FuncMap{
 	"yenShort":   render.YenShort,
 	"termID":     termID,
 	"disclaimer": func() string { return render.Disclaimer },
+	"contradictionNote": render.ContradictionNote,
+	"isAttn":            func(v lifecycle.LoopVerdict) bool { return v == lifecycle.VerdictContradiction },
 	"inc":        func(n int) int { return n + 1 },
 	"verdict":    func(v lifecycle.LoopVerdict) string { return v.String() },
 	"verdictClass": func(v lifecycle.LoopVerdict) string {
 		switch v {
 		case lifecycle.VerdictContradiction:
-			return "bad"
+			return "attn"
 		case lifecycle.VerdictConsistent:
 			return "good"
 		}

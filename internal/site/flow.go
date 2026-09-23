@@ -243,6 +243,9 @@ func digest(tl *lifecycle.Timeline) []string {
 				loop += "。この反映状況は増減を約束しないため判定対象外。"
 			} else {
 				loop += fmt.Sprintf("。判定は「%s」。", lp.Verdict)
+				if lp.Verdict == lifecycle.VerdictContradiction {
+					loop += render.ContradictionNote(lp.Reflection)
+				}
 			}
 		}
 	}

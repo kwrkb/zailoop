@@ -11,7 +11,7 @@ export function renderLoops(root: HTMLElement, rows: Row[], meta: Meta, params: 
   const m = params.get("m") ?? "";
   const refl = params.get("r") ?? "";
   const dir = params.get("d") ?? ""; // down / same / up
-  const verdict = params.get("v") ?? ""; // 3 = 矛盾 など
+  const verdict = params.get("v") ?? ""; // 3 = 反映要確認 など
   const sort = parseSort(params.get("sort"), "verdict", "desc");
   const shown = Number(params.get("n") ?? PAGE) || PAGE;
   const set = (k: string, v: string) => setAll({ [k]: v });
@@ -61,14 +61,14 @@ export function renderLoops(root: HTMLElement, rows: Row[], meta: Meta, params: 
       "v",
       [
         { value: "", label: "判定: すべて" },
-        { value: "3", label: "矛盾（縮減・廃止・終了予定なのに増額）" },
+        { value: "3", label: "反映要確認（縮減・廃止・終了予定なのに増額）" },
         { value: "2", label: "整合" },
         { value: "1", label: "判定対象外" },
       ],
       verdict,
       (v) => set("v", v),
     ),
-    select("sort", sortOptions([{ value: "verdict:desc", label: "矛盾を上に" }, { value: "delta:desc", label: "増額が大きい順" }, { value: "delta:asc", label: "減額が大きい順" }]), `${sort.key}:${sort.dir}`, (v) => set("sort", v)),
+    select("sort", sortOptions([{ value: "verdict:desc", label: "反映要確認を上に" }, { value: "delta:desc", label: "増額が大きい順" }, { value: "delta:asc", label: "減額が大きい順" }]), `${sort.key}:${sort.dir}`, (v) => set("sort", v)),
     refl || dir || verdict ? h("button", { type: "button", onclick: () => setAll({ r: null, d: null, v: null }) }, "絞り込みを解除") : null,
   );
 
@@ -82,7 +82,7 @@ export function renderLoops(root: HTMLElement, rows: Row[], meta: Meta, params: 
         loopCell(r),
         yenCell(r.prevInitial),
         yenCell(r.nextInitial),
-        h("td", { class: `verdict ${r.verdict === 3 ? "bad" : r.verdict === 2 ? "good" : "muted"}` }, VERDICT_LABEL[r.verdict] ?? ""),
+        h("td", { class: `verdict ${r.verdict === 3 ? "attn" : r.verdict === 2 ? "good" : "muted"}` }, VERDICT_LABEL[r.verdict] ?? ""),
         h("td", { class: "refl" }, r.reflection),
         badges(r, meta),
       ),
@@ -96,7 +96,7 @@ export function renderLoops(root: HTMLElement, rows: Row[], meta: Meta, params: 
 
   root.replaceChildren(
     h("h2", {}, "ループ検証", h("small", { class: "muted" }, ` ${prevYear}年度シートの「概算要求への反映状況」が、${prevYear + 1}年度シートの当初予算にどう現れたか`)),
-    h("p", { class: "muted" }, `比較は FY${prevYear} 当初（${prevYear}年度シート）と FY${prevYear + 1} 当初（${prevYear + 1}年度シート）。縮減・廃止・終了予定なのに増額なら「矛盾」。このサイト独自の判定で、公式の評価ではありません。`),
+    h("p", { class: "muted" }, `比較は FY${prevYear} 当初（${prevYear}年度シート）と FY${prevYear + 1} 当初（${prevYear + 1}年度シート）。縮減・廃止・終了予定だったのに翌年度の当初予算が増えた事業を「反映要確認」とします。事業の再編・移管などでも起こり、不正や無駄を示すものではありません。人が詳しく調べる候補を絞り込むための、このサイト独自の目印です。`),
     controls,
     table,
     summaryLine(list.length, scoped.length),

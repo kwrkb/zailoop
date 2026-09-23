@@ -76,10 +76,16 @@ func reflected(lp lifecycle.Loop) string {
 	return ""
 }
 
+// ContradictionNote は「反映要確認」の説明。CLI と HTML で同じ文言を使う。
+// 不正や無駄の判定ではなく、人が調べる候補であることが伝わる書き方にする。
+func ContradictionNote(reflection string) string {
+	return fmt.Sprintf("「%s」だったのに翌年度の当初予算が増えています。事業の再編・移管などの可能性もあります。", reflection)
+}
+
 func verdictNote(lp lifecycle.Loop) string {
 	switch lp.Verdict {
 	case lifecycle.VerdictContradiction:
-		return "（縮減・廃止・終了予定なのに翌年当初が増加）"
+		return "（" + strings.TrimSuffix(ContradictionNote(lp.Reflection), "。") + "）"
 	case lifecycle.VerdictConsistent:
 		return "（翌年当初は減少または横ばい）"
 	case lifecycle.VerdictNeutral:

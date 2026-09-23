@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   // src/data.ts
-  var VERDICT_LABEL = { 0: "\u4E0D\u660E", 1: "\u5224\u5B9A\u5BFE\u8C61\u5916", 2: "\u6574\u5408", 3: "\u77DB\u76FE" };
+  var VERDICT_LABEL = { 0: "\u4E0D\u660E", 1: "\u5224\u5B9A\u5BFE\u8C61\u5916", 2: "\u6574\u5408", 3: "\u53CD\u6620\u8981\u78BA\u8A8D" };
   var n = (v) => v === void 0 ? null : v;
   function decodeRow(r, meta) {
     const sg = r.sg ?? 0;
@@ -423,7 +423,7 @@
   function loopCell(r) {
     const d = initialDelta(r);
     if (!r.prevReflection && d === null) return h("td", { class: "muted" }, "\u2014");
-    const cls = r.verdict === 3 ? "bad" : r.verdict === 2 ? "good" : "";
+    const cls = r.verdict === 3 ? "attn" : r.verdict === 2 ? "good" : "";
     const arrow = d === null ? "" : d < 0 ? "\u2193" : d > 0 ? "\u2191" : "\u2192";
     return h(
       "td",
@@ -582,7 +582,7 @@
       stat(`FY${n2} \u5F53\u521D\u4E88\u7B97`, yenShort(o.initial), "\u4E8B\u696D\u3054\u3068\u306E\u5024\u306E\u5358\u7D14\u5408\u8A08\uFF08\u56FD\u306E\u4E88\u7B97\u7DCF\u984D\u3068\u306F\u4E00\u81F4\u3057\u306A\u3044\uFF09", "", yenFull(o.initial)),
       stat(`FY${n2} \u57F7\u884C\u7387`, pct(o.execRate), `\u57F7\u884C ${yenShort(o.rateExecuted)} \uFF0F \u73FE\u984D ${yenShort(o.rateCurrent)}\uFF08\u73FE\u984D 0 \u4EE5\u4E0B\u3092\u9664\u304F\uFF09`, "", "\u57F7\u884C\u984D\u306E\u5408\u8A08 \xF7 \u6B73\u51FA\u4E88\u7B97\u73FE\u984D\u306E\u5408\u8A08\u3002\u57F7\u884C\u304C\u78BA\u5B9A\u3057\u3001\u6B73\u51FA\u4E88\u7B97\u73FE\u984D\u304C\u6B63\u306E\u4E8B\u696D\u3060\u3051\u3067\u8A08\u7B97"),
       stat("\u5146\u5019\u306E\u3042\u308B\u4E8B\u696D", num(o.withSignals), `\u5168\u4F53\u306E ${pct(o.projects ? o.withSignals / o.projects : null, 0)}\u3002\u3053\u306E\u30B5\u30A4\u30C8\u72EC\u81EA\u306E\u5224\u5B9A \u2192 \u65AD\u7D76\u3092\u63A2\u3059`, "#gaps"),
-      multi ? stat("\u30EB\u30FC\u30D7\u691C\u8A3C\u3067\u300C\u77DB\u76FE\u300D", num(o.contradictions), "\u53CD\u6620\u3068\u9006\u306B\u5897\u984D\u3002\u3053\u306E\u30B5\u30A4\u30C8\u72EC\u81EA\u306E\u5224\u5B9A \u2192 \u30EB\u30FC\u30D7\u691C\u8A3C", "#loops?v=3") : null
+      multi ? stat("\u30EB\u30FC\u30D7\u691C\u8A3C\u3067\u300C\u53CD\u6620\u8981\u78BA\u8A8D\u300D", num(o.contradictions), "\u7E2E\u6E1B\u7B49\u306E\u65B9\u91DD\u306A\u306E\u306B\u7FCC\u5E74\u5EA6\u5897\u984D\u3002\u3053\u306E\u30B5\u30A4\u30C8\u72EC\u81EA\u306E\u76EE\u5370 \u2192 \u30EB\u30FC\u30D7\u691C\u8A3C", "#loops?v=3") : null
     );
     const totals = ministryTotals(rows, meta.sheetYear);
     const max = Math.max(1, ...totals.map((t) => t.initial));
@@ -741,14 +741,14 @@
         "v",
         [
           { value: "", label: "\u5224\u5B9A: \u3059\u3079\u3066" },
-          { value: "3", label: "\u77DB\u76FE\uFF08\u7E2E\u6E1B\u30FB\u5EC3\u6B62\u30FB\u7D42\u4E86\u4E88\u5B9A\u306A\u306E\u306B\u5897\u984D\uFF09" },
+          { value: "3", label: "\u53CD\u6620\u8981\u78BA\u8A8D\uFF08\u7E2E\u6E1B\u30FB\u5EC3\u6B62\u30FB\u7D42\u4E86\u4E88\u5B9A\u306A\u306E\u306B\u5897\u984D\uFF09" },
           { value: "2", label: "\u6574\u5408" },
           { value: "1", label: "\u5224\u5B9A\u5BFE\u8C61\u5916" }
         ],
         verdict,
         (v) => set("v", v)
       ),
-      select("sort", sortOptions([{ value: "verdict:desc", label: "\u77DB\u76FE\u3092\u4E0A\u306B" }, { value: "delta:desc", label: "\u5897\u984D\u304C\u5927\u304D\u3044\u9806" }, { value: "delta:asc", label: "\u6E1B\u984D\u304C\u5927\u304D\u3044\u9806" }]), `${sort.key}:${sort.dir}`, (v) => set("sort", v)),
+      select("sort", sortOptions([{ value: "verdict:desc", label: "\u53CD\u6620\u8981\u78BA\u8A8D\u3092\u4E0A\u306B" }, { value: "delta:desc", label: "\u5897\u984D\u304C\u5927\u304D\u3044\u9806" }, { value: "delta:asc", label: "\u6E1B\u984D\u304C\u5927\u304D\u3044\u9806" }]), `${sort.key}:${sort.dir}`, (v) => set("sort", v)),
       refl || dir || verdict ? h("button", { type: "button", onclick: () => setAll({ r: null, d: null, v: null }) }, "\u7D5E\u308A\u8FBC\u307F\u3092\u89E3\u9664") : null
     );
     const { tbody: listBody, more } = paged(
@@ -760,7 +760,7 @@
         loopCell(r),
         yenCell(r.prevInitial),
         yenCell(r.nextInitial),
-        h("td", { class: `verdict ${r.verdict === 3 ? "bad" : r.verdict === 2 ? "good" : "muted"}` }, VERDICT_LABEL[r.verdict] ?? ""),
+        h("td", { class: `verdict ${r.verdict === 3 ? "attn" : r.verdict === 2 ? "good" : "muted"}` }, VERDICT_LABEL[r.verdict] ?? ""),
         h("td", { class: "refl" }, r.reflection),
         badges(r, meta)
       ),
@@ -773,7 +773,7 @@
     );
     root.replaceChildren(
       h("h2", {}, "\u30EB\u30FC\u30D7\u691C\u8A3C", h("small", { class: "muted" }, ` ${prevYear}\u5E74\u5EA6\u30B7\u30FC\u30C8\u306E\u300C\u6982\u7B97\u8981\u6C42\u3078\u306E\u53CD\u6620\u72B6\u6CC1\u300D\u304C\u3001${prevYear + 1}\u5E74\u5EA6\u30B7\u30FC\u30C8\u306E\u5F53\u521D\u4E88\u7B97\u306B\u3069\u3046\u73FE\u308C\u305F\u304B`)),
-      h("p", { class: "muted" }, `\u6BD4\u8F03\u306F FY${prevYear} \u5F53\u521D\uFF08${prevYear}\u5E74\u5EA6\u30B7\u30FC\u30C8\uFF09\u3068 FY${prevYear + 1} \u5F53\u521D\uFF08${prevYear + 1}\u5E74\u5EA6\u30B7\u30FC\u30C8\uFF09\u3002\u7E2E\u6E1B\u30FB\u5EC3\u6B62\u30FB\u7D42\u4E86\u4E88\u5B9A\u306A\u306E\u306B\u5897\u984D\u306A\u3089\u300C\u77DB\u76FE\u300D\u3002\u3053\u306E\u30B5\u30A4\u30C8\u72EC\u81EA\u306E\u5224\u5B9A\u3067\u3001\u516C\u5F0F\u306E\u8A55\u4FA1\u3067\u306F\u3042\u308A\u307E\u305B\u3093\u3002`),
+      h("p", { class: "muted" }, `\u6BD4\u8F03\u306F FY${prevYear} \u5F53\u521D\uFF08${prevYear}\u5E74\u5EA6\u30B7\u30FC\u30C8\uFF09\u3068 FY${prevYear + 1} \u5F53\u521D\uFF08${prevYear + 1}\u5E74\u5EA6\u30B7\u30FC\u30C8\uFF09\u3002\u7E2E\u6E1B\u30FB\u5EC3\u6B62\u30FB\u7D42\u4E86\u4E88\u5B9A\u3060\u3063\u305F\u306E\u306B\u7FCC\u5E74\u5EA6\u306E\u5F53\u521D\u4E88\u7B97\u304C\u5897\u3048\u305F\u4E8B\u696D\u3092\u300C\u53CD\u6620\u8981\u78BA\u8A8D\u300D\u3068\u3057\u307E\u3059\u3002\u4E8B\u696D\u306E\u518D\u7DE8\u30FB\u79FB\u7BA1\u306A\u3069\u3067\u3082\u8D77\u3053\u308A\u3001\u4E0D\u6B63\u3084\u7121\u99C4\u3092\u793A\u3059\u3082\u306E\u3067\u306F\u3042\u308A\u307E\u305B\u3093\u3002\u4EBA\u304C\u8A73\u3057\u304F\u8ABF\u3079\u308B\u5019\u88DC\u3092\u7D5E\u308A\u8FBC\u3080\u305F\u3081\u306E\u3001\u3053\u306E\u30B5\u30A4\u30C8\u72EC\u81EA\u306E\u76EE\u5370\u3067\u3059\u3002`),
       controls,
       table,
       summaryLine(list.length, scoped.length),

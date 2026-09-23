@@ -4,7 +4,7 @@
   --bg:#f8f7f4; --surface:#ffffff; --surface2:#f1efea; --fg:#1f2328; --muted:#636a73; --line:#e3e0d9;
   --accent:#2f5d8a; --accent-soft:#a9c1da; --accent-bg:#e8eff7; --link:#1f5fa8;
   --good:#2e7d4f; --neg:#b3261e; --none:#cfd3d8; --carry:#8a96a3; --warn:#c98a1b;
-  --badge:#fbefd5; --badgefg:#7a4b00;
+  --badge:#fbefd5; --badgefg:#7a4b00; --attn:#9a5b00;
   --bar:var(--accent);
   --radius:10px; --gap:16px;
 }
@@ -13,7 +13,7 @@
     --bg:#141619; --surface:#1c1f23; --surface2:#24282d; --fg:#e7e7e4; --muted:#9ba2aa; --line:#33383e;
     --accent:#7fa8d6; --accent-soft:#3e5a78; --accent-bg:#1f2d3c; --link:#8ab8f0;
     --good:#6cc28f; --neg:#f08a80; --none:#4a5058; --carry:#7d8894; --warn:#e0a94a;
-    --badge:#433414; --badgefg:#f3d79a;
+    --badge:#433414; --badgefg:#f3d79a; --attn:#e8b75a;
   }
 }
 * { box-sizing:border-box; }
@@ -48,8 +48,8 @@ footer { margin-top:3em; padding-top:1em; border-top:1px solid var(--line); font
 
 /* ループ検証の 1 件（詳細の「年度をまたぐ推移」） */
 div.loop { border-left:4px solid var(--none); padding:4px 12px; margin:8px 0; background:var(--surface); border-radius:0 var(--radius) var(--radius) 0; } div.loop p { margin:2px 0; }
-div.loop.good { border-color:var(--good); } div.loop.bad { border-color:var(--neg); } div.loop .verdict { font-weight:bold; margin-left:8px; }
-div.loop.bad .verdict { color:var(--neg); } div.loop.good .verdict { color:var(--good); }
+div.loop.good { border-color:var(--good); } div.loop.attn { border-color:var(--warn); } div.loop .verdict { font-weight:bold; margin-left:8px; }
+div.loop.attn .verdict { color:var(--attn); } div.loop.good .verdict { color:var(--good); } div.loop .note { font-size:0.9rem; color:var(--muted); }
 table.timeline th.num, table.timeline td.num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
 
 /* 詳細: 要点と兆候 */

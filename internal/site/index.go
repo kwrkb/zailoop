@@ -38,7 +38,7 @@ type Row struct {
 	Signals    uint16    `json:"sg,omitempty"` // Signal ビット
 	PrevRefl   int       `json:"pr,omitempty"` // 前年シートの反映状況（Meta.Reflections の添字 + 1。0 はなし）
 	PrevInit   *int64    `json:"pi,omitempty"` // 前年シートの FY S 当初（当年当初との比較基準）
-	Verdict    int       `json:"lv,omitempty"` // LoopVerdict（0 不明 1 対象外 2 整合 3 矛盾）
+	Verdict    int       `json:"lv,omitempty"` // LoopVerdict（0 不明 1 対象外 2 整合 3 反映要確認）
 	Renamed    bool      `json:"rn,omitempty"` // 事業名が年度間で変わった
 	SheetYear  int       `json:"sy,omitempty"` // この行の最新シートの事業年度（Meta.SheetYear と違うときだけ）。実績は sy−1 年度
 }

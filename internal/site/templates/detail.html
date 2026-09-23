@@ -108,6 +108,7 @@
     <p>FY{{.SheetYear}} 当初 {{yen .Initial}} → FY{{inc .SheetYear}} 要求 {{yen .NextRequest}}
     {{if .Closed}}→ FY{{inc .SheetYear}} 当初 <strong>{{yen .NextInitial}}</strong>（{{inc .SheetYear}}年度シート）。FY{{.SheetYear}} 執行 {{yen .Executed}}（{{ratio .ExecRate}}）
     <span class="verdict">判定: {{verdict .Verdict}}</span>{{else}}<span class="muted">→ 翌年のシートがないため未検証</span>{{end}}</p>
+    {{if isAttn .Verdict}}<p class="note">{{contradictionNote .Reflection}}</p>{{end}}
   </div>
   {{end}}
   {{if .TL.Notes}}<details><summary>年度間の差異（{{len .TL.Notes}}）</summary><ul>{{range .TL.Notes}}<li>{{.}}</li>{{end}}</ul></details>{{end}}

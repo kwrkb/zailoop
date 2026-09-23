@@ -39,7 +39,7 @@ const (
 	VerdictUnknown       LoopVerdict = iota // 翌年のシートがない、または当初予算が比較できない
 	VerdictNeutral                          // 反映状況が増減を約束していない（現状通り・執行等改善 など）
 	VerdictConsistent                       // 縮減・廃止・終了予定 → 翌年当初が減った（または 0）
-	VerdictContradiction                    // 縮減・廃止・終了予定 → 翌年当初が増えた
+	VerdictContradiction                    // 縮減・廃止・終了予定 → 翌年当初が増えた（表示は「反映要確認」。不正や無駄の判定ではない）
 )
 
 func (v LoopVerdict) String() string {
@@ -49,7 +49,7 @@ func (v LoopVerdict) String() string {
 	case VerdictConsistent:
 		return "整合"
 	case VerdictContradiction:
-		return "矛盾"
+		return "反映要確認"
 	}
 	return "不明"
 }

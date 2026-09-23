@@ -34,7 +34,7 @@ export function renderOverview(rows: Row[], meta: Meta, params: URLSearchParams,
     stat(`FY${n} 当初予算`, yenShort(o.initial), "事業ごとの値の単純合計（国の予算総額とは一致しない）", "", yenFull(o.initial)),
     stat(`FY${n} 執行率`, pct(o.execRate), `執行 ${yenShort(o.rateExecuted)} ／ 現額 ${yenShort(o.rateCurrent)}（現額 0 以下を除く）`, "", "執行額の合計 ÷ 歳出予算現額の合計。執行が確定し、歳出予算現額が正の事業だけで計算"),
     stat("兆候のある事業", num(o.withSignals), `全体の ${pct(o.projects ? o.withSignals / o.projects : null, 0)}。このサイト独自の判定 → 断絶を探す`, "#gaps"),
-    multi ? stat("ループ検証で「矛盾」", num(o.contradictions), "反映と逆に増額。このサイト独自の判定 → ループ検証", "#loops?v=3") : null,
+    multi ? stat("ループ検証で「反映要確認」", num(o.contradictions), "縮減等の方針なのに翌年度増額。このサイト独自の目印 → ループ検証", "#loops?v=3") : null,
   );
 
   const totals = ministryTotals(rows, meta.sheetYear);
