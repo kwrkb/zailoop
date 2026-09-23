@@ -2,6 +2,7 @@
 //
 //	zailoop fetch [--year 2024] [--data data]
 //	zailoop show <予算事業ID> [--year 2024] [--data data]
+//	zailoop version
 package main
 
 import (
@@ -12,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -33,13 +35,29 @@ const usage = `zailoop: 予算事業のライフサイクル（要求→成立�
                                                   --years で複数年度を結合し、推移とループ検証を加える
   zailoop build [--out site] [--year 2024 | --years 2024,2025] [--data data] [閾値オプション]
                                                   全事業の静的サイトを生成する
+  zailoop version                                 バージョンを表示する
     閾値: --gap-ratio 0.5 --min-exec-rate 0.5 --min-unused 1000000000
           --unused-ratio 0.2 --outcome-low 80 --outcome-high 200
 
 データは <data>/raw/ に ZIP、<data>/csv/ に CSV として置く。
 ` + render.Attribution + `
 ` + render.Disclaimer + `
+ソースコード: ` + render.Repo + `（MIT）
 `
+
+// version はリリースのビルドで -ldflags "-X main.version=vX.Y.Z" から入れる。
+// 空なら go install で入ったモジュールのバージョン（手元のビルドは "(devel)"）を使う。
+var version = ""
+
+func versionString() string {
+	if version != "" {
+		return version
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" {
+		return bi.Main.Version
+	}
+	return "(devel)"
+}
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -65,6 +83,9 @@ func run(args []string) error {
 		return runShow(args[1:])
 	case "build":
 		return runBuild(args[1:])
+	case "version", "--version", "-v":
+		fmt.Println("zailoop", versionString())
+		return nil
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 		return nil

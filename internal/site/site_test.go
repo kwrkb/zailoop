@@ -51,6 +51,9 @@ func TestBuild(t *testing.T) {
 		if !strings.Contains(string(b), `href="https://rssystem.go.jp/"`) {
 			t.Errorf("%s: missing link to the data source", f)
 		}
+		if !strings.Contains(string(b), `href="`+render.Repo+`"`) {
+			t.Errorf("%s: missing link to the repository", f)
+		}
 	}
 	zero, _ := os.ReadFile(filepath.Join(out, "p", "11.html"))
 	if !strings.Contains(string(zero), "算出対象外") {

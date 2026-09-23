@@ -45,14 +45,15 @@ var funcs = template.FuncMap{
 		}
 		return v
 	},
-	"yenSigned":  func(v int64) string { return render.YenValue(v) },
-	"yenShort":   render.YenShort,
-	"termID":     termID,
-	"disclaimer": func() string { return render.Disclaimer },
+	"yenSigned":         func(v int64) string { return render.YenValue(v) },
+	"yenShort":          render.YenShort,
+	"termID":            termID,
+	"disclaimer":        func() string { return render.Disclaimer },
+	"repo":              func() string { return render.Repo },
 	"contradictionNote": render.ContradictionNote,
 	"isAttn":            func(v lifecycle.LoopVerdict) bool { return v == lifecycle.VerdictContradiction },
-	"inc":        func(n int) int { return n + 1 },
-	"verdict":    func(v lifecycle.LoopVerdict) string { return v.String() },
+	"inc":               func(n int) int { return n + 1 },
+	"verdict":           func(v lifecycle.LoopVerdict) string { return v.String() },
 	"verdictClass": func(v lifecycle.LoopVerdict) string {
 		switch v {
 		case lifecycle.VerdictContradiction:

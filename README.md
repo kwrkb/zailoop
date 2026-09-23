@@ -2,6 +2,18 @@
 
 予算事業レビューシートの公開 CSV から、1 つの予算事業の「要求 → 成立 → 執行 → 決算 → 評価 → 翌年度反映」を 1 画面で表示する Go CLI です。
 
+公開中のサイト: https://zailoop.kwrkb.workers.dev
+
+## インストール
+
+```sh
+go install github.com/kwrkb/zailoop/cmd/zailoop@latest
+```
+
+Go がない場合は [Releases](https://github.com/kwrkb/zailoop/releases) から OS に合ったバイナリを取ってください（`zailoop version` で版を確認できます）。
+
+## 使い方
+
 ```sh
 go build ./cmd/zailoop
 ./zailoop fetch --year 2024          # data/ に配布 ZIP を取得・展開（各ファイル 1 回だけ）

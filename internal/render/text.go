@@ -22,6 +22,9 @@ const Attribution = "出典: 行政事業レビュー見える化サイトのデ
 // （見える化サイトの利用規約）、非公式であることと、独自の判定であることを明示する。
 const Disclaimer = "zailoop は非公式のツールで、国や府省庁が作成したものではありません。兆候とループ検証は zailoop 独自の目印で、不正や無駄を判定するものではありません。"
 
+// Repo はソースコードの置き場所。サイトのフッターと CLI の使い方に出す。
+const Repo = "https://github.com/kwrkb/zailoop"
+
 // Text は 1 事業のライフサイクルをテキストで書き出す。
 func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 	p := &printer{w: w}

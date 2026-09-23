@@ -87,3 +87,15 @@ func TestParseYears(t *testing.T) {
 		}
 	}
 }
+
+func TestVersionString(t *testing.T) {
+	defer func(v string) { version = v }(version)
+	version = "v9.9.9"
+	if got := versionString(); got != "v9.9.9" {
+		t.Errorf("versionString() = %q, want the -X value", got)
+	}
+	version = ""
+	if got := versionString(); got == "" {
+		t.Error("versionString() is empty without -X")
+	}
+}
