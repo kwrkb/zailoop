@@ -41,6 +41,10 @@ npx wrangler deploy                               # https://zailoop.kwrkb.worker
 
 取得した CSV・ZIP はリポジトリに含めません（`data/` は `.gitignore`）。`testdata/` にはテスト用に数事業分（2024 年度 5 事業、2025 年度 7 事業）だけ抜粋しています。
 
+## ライセンス
+
+コードは [MIT](LICENSE)。`testdata/` の抜粋 CSV は配布元の条件（PDL1.0）に従います。
+
 ## ドキュメント
 
 - `VISION.md` 目的・スコープ・設計判断

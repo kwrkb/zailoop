@@ -4,7 +4,7 @@
 
 ## 現在の状態
 
-- リポジトリ: https://github.com/kwrkb/zailoop（プライベート）。`main` が最新
+- リポジトリ: https://github.com/kwrkb/zailoop（パブリック）。`main` が最新
 - 完了: Phase 1（CLI）、Phase 2（静的サイト）、Phase 3a（2024・2025 年度の結合とループ検証）
 - 手元データ: `data/csv/` に 2024・2025 年度の 15 ファイルずつ（コミット対象外。`zailoop fetch --year <年度>` で再取得できる）
 - ドキュメントの優先順: VISION.md > PLAN.md > コード > NOTES.md。列の対応は `docs/data-survey.md`

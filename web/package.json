@@ -1,6 +1,7 @@
 {
   "name": "zailoop-web",
   "private": true,
+  "license": "MIT",
   "version": "0.1.0",
   "description": "zailoop の一覧・横断ビュー（index.html 用フロント）。ビルド成果物は internal/site/assets/app.js にコミットする。",
   "type": "module",

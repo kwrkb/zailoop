@@ -48,4 +48,4 @@ zailoop は不正や無駄を判定するものではなく、**人が調べる�
 
 ## リポジトリ
 
-`github.com/kwrkb/zailoop`（公開予定）
+`github.com/kwrkb/zailoop`（公開。コードは MIT、`testdata/` の抜粋 CSV は PDL1.0）
