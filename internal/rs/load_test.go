@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-var csvNumbers = []string{"1-2", "2-1", "2-2", "3-1", "4-1", "5-1"}
+var csvNumbers = []string{"1-2", "1-5", "2-1", "2-2", "3-1", "4-1", "5-1"}
 
 func fixtureDir() Dir { return Dir{Path: "../../testdata/2024", Year: 2024} }
 
@@ -489,4 +489,31 @@ func ExampleDir_LoadSheet() {
 	}
 	fmt.Println(sheet.Project.Name, sheet.Budget(2023).Total.Executed.Value)
 	// Output: 法教育の推進 28433000
+}
+
+func TestLoadSheetRelated(t *testing.T) {
+	dir := Dir{Path: "../../testdata/2025", Year: 2025}
+	sheet, err := dir.LoadSheet("1937")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Related{{ID: "1936", Name: "医療提供体制推進事業", Kind: "親事業"}}
+	if !slices.Equal(sheet.Related, want) {
+		t.Errorf("1937 Related = %+v, want %+v", sheet.Related, want)
+	}
+	// 関連事業のない事業は空欄 1 行だけを持つ
+	sheet, err = dir.LoadSheet("884")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sheet.Related) != 0 {
+		t.Errorf("884 Related = %+v, want none", sheet.Related)
+	}
+	ids, err := dir.IDs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ids) != 7 || !ids["1937"] || ids["1936"] {
+		t.Errorf("IDs = %v", ids)
+	}
 }

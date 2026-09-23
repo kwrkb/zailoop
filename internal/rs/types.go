@@ -183,10 +183,19 @@ type PayeeBlock struct {
 	Payees     []Payee
 }
 
+// Related は 1-5「関連事業」の 1 件。関連事業のない事業は空欄 1 行だけを持つので読み飛ばす。
+// ID はレビューシートのない事業（基金シート・セグメントシートなど）を指すことがある。
+type Related struct {
+	ID   string // 関連事業の事業ID
+	Name string // 関連事業の事業名
+	Kind string // 関連性（親事業/子事業/統合元/統合先/分割元/分割先/基金造成した基金シート …）
+}
+
 // Sheet は 1 年度分の CSV 群から組み立てた 1 事業のレビューシート。
 type Sheet struct {
 	FiscalYear int // 事業年度（CSV の「事業年度」列）
 	Project    Project
+	Related    []Related    // 1-5、CSV の出現順
 	Budgets    []BudgetYear // 予算年度の昇順
 	Items      []BudgetItem // 2-2、CSV の出現順
 	Indicators []Indicator  // 3-1、CSV の出現順

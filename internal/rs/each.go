@@ -2,7 +2,7 @@ package rs
 
 import "fmt"
 
-// Each は6種類の CSV を各1回走査し、予算事業IDの数値昇順にシートを渡す。
+// Each は7種類の CSV を各1回走査し、予算事業IDの数値昇順にシートを渡す。
 // 各 CSV は同じ ID の行が連続し、グループが数値昇順に並んでいる必要がある。
 // fn がエラーを返すと直ちに終了する。渡したシートは呼び出し後も保持できる。
 func (d Dir) Each(fn func(*Sheet) error) error {

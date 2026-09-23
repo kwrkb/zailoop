@@ -62,6 +62,7 @@ type Enacted struct {
 	Current       rs.Yen // 歳出予算現額
 	State         State
 	Items         []ItemLine // 2-2 を予算種別で集約（出現順）
+	Notes         string     // その他特記事項（内数表記の説明などが入る）
 }
 
 // ItemLine は 2-2 の予算種別ごとの集約。
@@ -164,6 +165,25 @@ type Lifecycle struct {
 	BudgetYears []int      // シートにある予算年度（昇順）
 	Years       []YearLine // 予算年度ごとの当初・現額・執行（昇順）
 	Notes       []string   // 整合チェックの警告（rs の Issues を含む）
+
+	Related []rs.Related // 1-5 の関連事業（シートの記載どおり）
+	// AllZero は最新シートの全予算年度で当初・補正・現額・執行・翌年度要求がすべて 0（または空欄）。
+	// 予算が親事業などにまとめて計上され、事業単位の額が出ていない事業に多い。
+	AllZero bool
+	// ZeroNotes は AllZero のときだけ、全予算年度の「その他特記事項」「主な増減理由」を重複を除いて並べたもの。
+	// 0 の理由（内数表記、国庫債務負担行為など）が FY N 以外の行にだけ書かれている事業がある。
+	ZeroNotes []string
+}
+
+// Parents は関連事業のうち関連性が「親事業」のもの。
+func (lc *Lifecycle) Parents() []rs.Related {
+	var ps []rs.Related
+	for _, r := range lc.Related {
+		if r.Kind == "親事業" {
+			ps = append(ps, r)
+		}
+	}
+	return ps
 }
 
 // Options は Build の設定。
@@ -200,7 +220,46 @@ func Build(s *rs.Sheet, opt Options) *Lifecycle {
 	lc.Evaluation = buildEvaluation(s, n)
 	lc.Reflection = buildReflection(s, n)
 	lc.Payees, lc.BlockCount = buildPayees(s, top)
+	lc.Related = s.Related
+	lc.AllZero = allZero(s.Budgets)
+	if lc.AllZero {
+		lc.ZeroNotes = zeroNotes(s.Budgets)
+	}
 	return lc
+}
+
+func zeroNotes(budgets []rs.BudgetYear) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, b := range budgets {
+		for _, v := range [][2]string{{"その他特記事項", b.Total.Notes}, {"主な増減理由", b.Total.ChangeReason}} {
+			text := Clean(v[1])
+			if text == "" || seen[text] {
+				continue
+			}
+			seen[text] = true
+			out = append(out, fmt.Sprintf("%s（予算年度%d）: %s", v[0], b.Year, text))
+		}
+	}
+	return out
+}
+
+// allZero は合計行が 1 つ以上あり、その金額がすべて 0 か空欄かを返す。
+func allZero(budgets []rs.BudgetYear) bool {
+	seen := false
+	for _, b := range budgets {
+		if !b.HasTotal {
+			continue
+		}
+		seen = true
+		t := b.Total
+		for _, v := range []rs.Yen{t.Initial, t.Supplementary, t.Current, t.Executed, t.NextRequest} {
+			if v.Valid && v.Value != 0 {
+				return false
+			}
+		}
+	}
+	return seen
 }
 
 func buildRequest(s *rs.Sheet, n int) Request {
@@ -219,6 +278,7 @@ func buildEnacted(s *rs.Sheet, n int) Enacted {
 	if b := s.Budget(n); b != nil && b.HasTotal {
 		t := b.Total
 		e.Initial, e.Supplementary, e.CarriedIn, e.Reserve, e.Current = t.Initial, t.Supplementary, t.CarriedIn, t.Reserve, t.Current
+		e.Notes = Clean(t.Notes)
 		e.State = StateOK
 	}
 	var order []string

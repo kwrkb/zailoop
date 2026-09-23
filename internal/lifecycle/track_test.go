@@ -113,3 +113,16 @@ func TestTrackSingleSheet(t *testing.T) {
 		t.Error("nil expected")
 	}
 }
+
+func TestTrackPastParents(t *testing.T) {
+	parent := func(id string) rs.Related { return rs.Related{ID: id, Name: "親" + id, Kind: "親事業"} }
+	old := &rs.Sheet{FiscalYear: 2024, Project: rs.Project{ID: "5"}, Related: []rs.Related{parent("497"), parent("1"), {ID: "7", Kind: "その他関連先"}}}
+	cur := &rs.Sheet{FiscalYear: 2025, Project: rs.Project{ID: "5"}, Related: []rs.Related{parent("1")}}
+	tl := Track([]*rs.Sheet{cur, old}, Thresholds{})
+	if len(tl.PastParents) != 1 || tl.PastParents[0].SheetYear != 2024 || tl.PastParents[0].ID != "497" {
+		t.Errorf("PastParents = %+v", tl.PastParents)
+	}
+	if tl := Track([]*rs.Sheet{cur}, Thresholds{}); len(tl.PastParents) != 0 {
+		t.Errorf("single sheet PastParents = %+v", tl.PastParents)
+	}
+}

@@ -30,6 +30,16 @@
 </section>
 {{end}}
 
+{{if .LC.AllZero}}
+<section class="zero" aria-labelledby="zero-h">
+  <h2 id="zero-h">金額がすべて 0 の事業</h2>
+  <p>{{.LC.SheetYear}}年度シートでは、全予算年度の当初予算・補正予算・歳出予算現額・執行額・翌年度要求額がすべて 0 です。</p>
+  {{if .Parents}}<p>このシートの関連事業には、<strong>親事業</strong>として {{range $i, $p := .Parents}}{{if $i}}、{{end}}{{if $p.Href}}<a href="{{$p.Href}}">{{$p.Name}}</a>{{else}}{{$p.Name}}{{end}}（予算事業ID {{$p.ID}}）{{end}}が記載されています。</p>{{end}}
+  {{range .PastParents}}<p>{{.SheetYear}}年度シートの関連事業には、<strong>親事業</strong>として {{if .Href}}<a href="{{.Href}}">{{.Name}}</a>{{else}}{{.Name}}{{end}}（予算事業ID {{.ID}}）が記載されています（{{$.LC.SheetYear}}年度シートには記載なし）。</p>{{end}}
+  {{range .LC.ZeroNotes}}<p class="sub">{{.}}</p>{{else}}<p class="sub">「その他特記事項」「主な増減理由」に記載はありません。</p>{{end}}
+</section>
+{{end}}
+
 {{if .Badges}}
 <section class="signals" aria-labelledby="signals-h">
   <h2 id="signals-h">兆候 <small>このサイト独自の判定で、公式の評価ではありません。閾値は zailoop build の引数で変えられます</small></h2>
@@ -129,6 +139,7 @@
     <dt><a class="term" href="{{$.Root}}terms.html#{{termID "前年度繰越"}}">前年度繰越</a></dt><dd>{{yen .CarriedIn}}</dd>
     <dt><a class="term" href="{{$.Root}}terms.html#{{termID "予備費等"}}">予備費等</a></dt><dd>{{yen .Reserve}}</dd>
     <dt><a class="term" href="{{$.Root}}terms.html#{{termID "歳出予算現額"}}">歳出予算現額</a></dt><dd>{{yen .Current}}</dd>
+    {{with .Notes}}<dt>その他特記事項</dt><dd>{{.}}</dd>{{end}}
     {{if .Items}}<dt>内訳（予算種別）</dt><dd>{{range $i, $it := .Items}}{{if $i}}、{{end}}{{$it.Kind}} {{yen $it.Amount}}（{{$it.Count}}件）{{end}}</dd>{{end}}
   </dl>
   {{else}}<p class="muted">{{state .State}}</p>{{end}}{{end}}
@@ -138,7 +149,7 @@
   {{with .LC.Execution}}
   <dl>
     {{if isOK .State}}<dt><a class="term" href="{{$.Root}}terms.html#{{termID "執行額"}}">執行額</a></dt><dd>{{yen .Executed}}</dd><dt><a class="term" href="{{$.Root}}terms.html#{{termID "執行率"}}">執行率</a></dt><dd>{{ratio .Rate}}</dd>
-    {{else if eq (state .State) "算出対象外"}}<dt><a class="term" href="{{$.Root}}terms.html#{{termID "執行額"}}">執行額</a></dt><dd>{{yen .Executed}} <span class="muted">（歳出予算現額が 0 以下。予算は別事業に計上の可能性）</span></dd><dt><a class="term" href="{{$.Root}}terms.html#{{termID "執行率"}}">執行率</a></dt><dd>—（算出対象外）</dd>
+    {{else if eq (state .State) "算出対象外"}}<dt><a class="term" href="{{$.Root}}terms.html#{{termID "執行額"}}">執行額</a></dt><dd>{{yen .Executed}} <span class="muted">（歳出予算現額が 0 以下）</span></dd><dt><a class="term" href="{{$.Root}}terms.html#{{termID "執行率"}}">執行率</a></dt><dd>—（算出対象外）</dd>
     {{else}}<dt>執行</dt><dd>{{state .State}}</dd>{{end}}
   </dl>{{end}}
 </section>
@@ -189,6 +200,12 @@
   <table class="blocks"><tbody>
   {{range .LC.Payees}}<tr><th>{{.Number}}</th><td>{{.Name}}{{with .Role}}<br><span class="sub">{{.}}</span>{{end}}</td><td class="num">{{yen .Total}}</td></tr>{{end}}
   </tbody></table>
+</section>
+{{end}}
+
+{{if .Related}}
+<section class="stage related"><h2>関連事業 <small>シートの記載どおり（リンクはこのサイトにページがある事業のみ）</small></h2>
+  <dl>{{range .Related}}<dt>{{.Kind}}</dt><dd>{{range $i, $r := .Items}}{{if $i}}<br>{{end}}{{if $r.Href}}<a href="{{$r.Href}}">{{$r.Name}}</a>{{else}}{{$r.Name}}{{end}}{{with $r.ID}} <span class="muted">（ID {{.}}）</span>{{end}}{{end}}</dd>{{end}}</dl>
 </section>
 {{end}}
 

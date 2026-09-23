@@ -16,7 +16,7 @@ type Dir struct {
 	Year int
 }
 
-// LoadSheet は6種類の CSV を逐次走査して、指定した事業のシートを返す。
+// LoadSheet は7種類の CSV を逐次走査して、指定した事業のシートを返す。
 // ID が存在しない場合は errors.Is(err, ErrNotFound) が true になる。
 func (d Dir) LoadSheet(id string) (*Sheet, error) {
 	sheet := new(Sheet)
@@ -50,6 +50,9 @@ func tables() []table {
 	return []table{
 		{"1-2", projectColumns, func(id string, s *Sheet) builder {
 			return &projectBuilder{sheet: s, id: id}
+		}},
+		{"1-5", relatedColumns, func(_ string, s *Sheet) builder {
+			return &relatedBuilder{sheet: s}
 		}},
 		{"2-1", budgetColumns, func(_ string, s *Sheet) builder {
 			return &budgetBuilder{sheet: s, byYear: make(map[int]*BudgetYear), totalCounts: make(map[int]int)}
@@ -113,3 +116,21 @@ func (b *projectBuilder) row(r *csvRow) error {
 }
 
 func (b *projectBuilder) finish() error { return nil }
+
+var relatedColumns = []string{"関連事業の事業ID", "関連事業の事業名", "関連性"}
+
+type relatedBuilder struct{ sheet *Sheet }
+
+func (b *relatedBuilder) row(r *csvRow) error {
+	rel := Related{
+		ID:   strings.TrimSpace(r.text("関連事業の事業ID")),
+		Name: strings.TrimSpace(r.text("関連事業の事業名")),
+		Kind: strings.TrimSpace(r.text("関連性")),
+	}
+	if rel != (Related{}) {
+		b.sheet.Related = append(b.sheet.Related, rel)
+	}
+	return nil
+}
+
+func (b *relatedBuilder) finish() error { return nil }

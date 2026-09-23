@@ -139,3 +139,19 @@ func TestSignalBadgesEvidence(t *testing.T) {
 		t.Errorf("badges = %q, want %q", got, want)
 	}
 }
+
+func TestDigestSupplementaryOnly(t *testing.T) {
+	tl := lifecycle.Track([]*rs.Sheet{sheetWith(rs.BudgetTotal{Initial: y(0), Supplementary: y(500000000), Current: y(500000000), Executed: y(400000000)})}, lifecycle.Thresholds{})
+	got := strings.Join(digest(tl), "\n")
+	if !strings.Contains(got, "FY2023 の当初予算は 0 円で、補正予算は 5 億円。") {
+		t.Errorf("digest = %q", got)
+	}
+	if strings.Contains(got, "可能性") {
+		t.Errorf("digest must not guess: %q", got)
+	}
+	b := newIndexBuilder(2024)
+	b.add(lifecycle.SummarizeTimeline(tl, lifecycle.Thresholds{}))
+	if r := b.rows[0]; r.Supp == nil || *r.Supp != 500000000 {
+		t.Errorf("row sp = %v", r.Supp)
+	}
+}

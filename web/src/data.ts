@@ -49,6 +49,8 @@ export interface RawRow {
   rf: number;
   rq?: number;
   in?: number;
+  /** FY N 補正（0 以外のときだけ） */
+  sp?: number;
   cu?: number;
   ex?: number;
   er?: number;
@@ -85,6 +87,8 @@ export interface Row {
   reflection: string;
   request: number | null;
   initial: number | null;
+  /** FY N 補正予算（0 または空欄なら null） */
+  supplementary: number | null;
   current: number | null;
   executed: number | null;
   execRate: number | null;
@@ -127,6 +131,7 @@ export function decodeRow(r: RawRow, meta: Meta): Row {
     reflection: r.rf >= 0 ? (meta.reflections[r.rf] ?? "") : "",
     request: n(r.rq),
     initial: n(r.in),
+    supplementary: n(r.sp),
     current: n(r.cu),
     executed: n(r.ex),
     execRate: n(r.er),

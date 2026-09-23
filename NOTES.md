@@ -18,6 +18,7 @@
 - `site/list.html` JS なしの府省庁別リンク一覧
 - `site/p/<ID>.html` 事業詳細（JS なし、相対パスで `../assets/`）
 - 一覧 JSON のキーは `internal/site/index.go` の `Row`、デコードは `web/src/data.ts`
+- 当初予算が 0 で補正予算がある事業は、JSON の `sp`（補正、0 以外のときだけ）を一覧の当初セルに「補正 ○円」と添え、詳細の要点にも 1 文足す
 
 ## 複数年度（rs.Multi / lifecycle.Track）
 
@@ -28,13 +29,20 @@
 
 ## 全事業の読み取り（rs.Each）
 
-6 ファイルを `groupReader` で同時に開き、各ファイルの「同一 ID の連続行」を ID 昇順にマージして 1 事業ずつ `Sheet` を組み立てる。ID が昇順でなければ `ErrUnordered`。`LoadSheet` も同じ `builder`/`table` を使う。
+7 ファイル（1-2, 1-5, 2-1, 2-2, 3-1, 4-1, 5-1）を `groupReader` で同時に開き、各ファイルの「同一 ID の連続行」を ID 昇順にマージして 1 事業ずつ `Sheet` を組み立てる。ID が昇順でなければ `ErrUnordered`。`LoadSheet` も同じ `builder`/`table` を使う。
+
+## 関連事業（1-5）
+
+- `rs.Sheet.Related` → `lifecycle.Lifecycle.Related`。`Parents()` は関連性が「親事業」のもの、`AllZero` は全予算年度の金額がすべて 0
+- `lifecycle.Timeline.PastParents` は古いシートにだけある親事業（年度つき）
+- `site.BuildMulti` は先に `rs.Multi.IDs()`（1-2 だけ読む）でページのある ID を集め、関連事業はその ID だけリンクにする
+- 詳細ページ: `AllZero` なら要点の下に「金額がすべて 0 の事業」、各段階の後に「関連事業」（全年度の特記事項・増減理由を重複除去して表示）、② 成立に FY N の「その他特記事項」
 
 ## データの置き場
 
 - `data/raw/<name>.zip` 取得した ZIP（不正なものは `.bad` に退避）
 - `data/csv/<name>.csv` 展開した CSV
-- `testdata/2024/` 5 事業分の抜粋（ID 11, 884, 1319, 3522, 18556）、`testdata/2025/` 同 6 事業（+21625）
+- `testdata/2024/` 5 事業分の抜粋（ID 11, 884, 1319, 3522, 18556）、`testdata/2025/` 同 7 事業（+1937〔親事業 1936 の子、金額がすべて 0〕, 21625）
 
 ## 年度の対応（lifecycle）
 

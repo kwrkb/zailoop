@@ -21,6 +21,7 @@ type Row struct {
 	Reflection int       `json:"rf"`           // Meta.Reflections の添字（-1 なし）
 	Request    *int64    `json:"rq,omitempty"` // ① 概算要求
 	Initial    *int64    `json:"in,omitempty"` // ② 当初
+	Supp       *int64    `json:"sp,omitempty"` // ② 補正（0 以外のときだけ）
 	Current    *int64    `json:"cu,omitempty"` // ② 現額
 	Executed   *int64    `json:"ex,omitempty"` // ③ 執行
 	ExecRate   *float64  `json:"er,omitempty"` // ③ 執行率
@@ -116,7 +117,7 @@ func (b *indexBuilder) add(sm lifecycle.Summary) {
 	r := Row{
 		ID: sm.ID, Name: sm.Name,
 		Ministry: b.ministries.get(sm.Ministry), Category: b.categories.get(sm.Category), Reflection: -1,
-		Request: yenPtr(sm.Request), Initial: yenPtr(sm.Initial), Current: yenPtr(sm.Current), Executed: yenPtr(sm.Executed),
+		Request: yenPtr(sm.Request), Initial: yenPtr(sm.Initial), Supp: nonZero(sm.Supplementary), Current: yenPtr(sm.Current), Executed: yenPtr(sm.Executed),
 		CarriedOut: yenPtr(sm.CarriedOut), Unused: yenPtr(sm.Unused), Reflected: yenPtr(sm.Reflected),
 		NextInit: yenPtr(sm.NextInitial), NextReq: yenPtr(sm.NextRequest),
 		Outcomes: sm.OutcomeCount, Rates: sm.OutcomeRates, Signals: uint16(sm.Signals),

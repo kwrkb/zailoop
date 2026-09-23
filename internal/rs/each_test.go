@@ -172,6 +172,8 @@ func TestEachRowErrorContext(t *testing.T) {
 			switch number {
 			case "1-2":
 				rows[number][1]["事業年度"] = "bad"
+			case "1-5":
+				t.Skip("1-5 は文字列だけを読むので行エラーにならない")
 			case "2-1", "2-2":
 				bad["予算年度"] = "bad"
 			case "3-1":

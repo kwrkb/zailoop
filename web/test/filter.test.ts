@@ -4,7 +4,7 @@ import { normalize, applyFilter, sortRows, parseSort, initialDelta } from "../sr
 import type { Row } from "../src/data.ts";
 
 const row = (o: Partial<Row>): Row => ({
-  id: "1", name: "", ministry: "", category: "", reflection: "", request: null, initial: null, current: null, executed: null,
+  id: "1", name: "", ministry: "", category: "", reflection: "", request: null, initial: null, supplementary: null, current: null, executed: null,
   execRate: null, execState: "", carriedOut: null, unused: null, unusedDiff: null, unusedState: "", reflected: null,
   nextInitial: null, nextRequest: null, byYear: [], outcomes: 0, rates: [], signals: 0, signalCodes: [], prevReflection: "", prevInitial: null, verdict: 0, renamed: false, sheetYear: 2024, actualYear: 2023, ...o,
 });

@@ -14,7 +14,7 @@ func TestDetailEscapesHTML(t *testing.T) {
 		Evaluation: rs.Evaluation{SelfCheck: "<b>bold</b>"}}
 	tl := lifecycle.Track([]*rs.Sheet{s}, lifecycle.Thresholds{})
 	var buf bytes.Buffer
-	if err := writeDetail(&buf, tl, lifecycle.SummarizeTimeline(tl, lifecycle.Thresholds{}), lifecycle.Thresholds{}, "now"); err != nil {
+	if err := writeDetail(&buf, tl, lifecycle.SummarizeTimeline(tl, lifecycle.Thresholds{}), lifecycle.Thresholds{}, nil, "now"); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()
@@ -37,5 +37,27 @@ func TestIndexJSONEscapesScriptTerminator(t *testing.T) {
 	}
 	if strings.Count(buf.String(), "</script>") != 2 { // データ script と app.js の 2 つだけ
 		t.Errorf("unexpected </script> count in:\n%s", buf.String())
+	}
+}
+
+func TestRelatedGroups(t *testing.T) {
+	rels := []rs.Related{
+		{ID: "1936", Name: "親", Kind: "親事業"},
+		{ID: "9", Name: "外", Kind: "その他関連先"},
+		{ID: "10", Name: "内", Kind: "その他関連先"},
+		{ID: "../x", Name: "不正", Kind: ""},
+	}
+	got := relatedGroups(rels, map[string]bool{"1936": true, "10": true, "../x": true}, "../")
+	if len(got) != 3 || got[0].Kind != "親事業" || got[1].Kind != "その他関連先" || got[2].Kind != "関連性の記載なし" {
+		t.Fatalf("groups = %+v", got)
+	}
+	if got[0].Items[0].Href != "../p/1936.html" {
+		t.Errorf("parent href = %q", got[0].Items[0].Href)
+	}
+	if got[1].Items[0].Href != "" || got[1].Items[1].Href != "../p/10.html" {
+		t.Errorf("only known IDs should link: %+v", got[1].Items)
+	}
+	if got[2].Items[0].Href != "" {
+		t.Errorf("non-numeric ID must not become a path: %+v", got[2].Items[0])
 	}
 }

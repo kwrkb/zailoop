@@ -41,6 +41,19 @@ func (s single) Each(fn func([]*rs.Sheet) error) error {
 	return s.Source.Each(func(sh *rs.Sheet) error { return fn([]*rs.Sheet{sh}) })
 }
 
+// idLister は全事業を流す前にページのある予算事業ID を返す。rs.Dir と rs.Multi が満たす。
+// 満たさない Source では関連事業をリンクにせず名前だけ出す。
+type idLister interface {
+	IDs() (map[string]bool, error)
+}
+
+func (s single) IDs() (map[string]bool, error) {
+	if l, ok := s.Source.(idLister); ok {
+		return l.IDs()
+	}
+	return nil, nil
+}
+
 // Options は Build の設定。
 type Options struct {
 	Year       int                  // 事業年度（meta 用。0 なら最初の Sheet から取る）
@@ -79,6 +92,13 @@ func BuildMulti(src MultiSource, out string, opt Options) (Stats, error) {
 			return Stats{}, err
 		}
 	}
+	var known map[string]bool
+	if l, ok := src.(idLister); ok {
+		var err error
+		if known, err = l.IDs(); err != nil {
+			return Stats{}, err
+		}
+	}
 	var st Stats
 	var ib *indexBuilder
 	sheetYear, actualYear := opt.Year, 0
@@ -106,7 +126,7 @@ func BuildMulti(src MultiSource, out string, opt Options) (Stats, error) {
 		}
 		sm := lifecycle.SummarizeTimeline(tl, opt.Thresholds)
 		n, err := writeFile(filepath.Join(out, "p", tl.ID+".html"), func(w io.Writer) error {
-			return writeDetail(w, tl, sm, opt.Thresholds, generated)
+			return writeDetail(w, tl, sm, opt.Thresholds, known, generated)
 		})
 		if err != nil {
 			return err

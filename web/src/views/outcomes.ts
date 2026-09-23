@@ -4,7 +4,7 @@ import { applyFilter, parseSort, sortRows } from "../filter.ts";
 import { ratePct } from "../format.ts";
 import { histogram, withRates } from "../stats.ts";
 import { histogramSvg } from "../svg.ts";
-import { PAGE, ministryOptions, nameCell, paged, scroll, select, summaryLine, yenCell } from "./common.ts";
+import { PAGE, initialCell, ministryOptions, nameCell, paged, scroll, select, summaryLine } from "./common.ts";
 
 type Tab = "short" | "over" | "none";
 
@@ -53,7 +53,7 @@ export function renderOutcomes(root: HTMLElement, rows: Row[], meta: Meta, param
         h("td", { class: "num" }, ratePct(mn)),
         h("td", { class: "num" }, ratePct(mx)),
         h("td", { class: "rates muted" }, r.rates.map((v) => ratePct(v)).join(" / ")),
-        yenCell(r.initial),
+        initialCell(r),
         h("td", { class: "refl" }, r.reflection),
       );
     },

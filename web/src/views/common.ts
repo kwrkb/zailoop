@@ -61,7 +61,7 @@ export function amountCell(c: AmountCol, r: Row): HTMLElement {
     case "request":
       return yenCell(r.request);
     case "initial":
-      return yenCell(r.initial);
+      return initialCell(r);
     case "current":
       return yenCell(r.current);
     case "executed":
@@ -86,6 +86,15 @@ export function detailToggle(showAll: boolean, onchange: (v: boolean) => void): 
 }
 
 /** 金額セル（短い表記、title に全桁）。 */
+/** 当初予算のセル。当初が 0 で補正予算がある事業は、シートの補正予算額を添える。 */
+export function initialCell(r: Row): HTMLElement {
+  const td = yenCell(r.initial);
+  if (r.initial === 0 && r.supplementary !== null) {
+    td.appendChild(h("span", { class: "sub block", title: yenFull(r.supplementary) }, `補正 ${yenShort(r.supplementary)}`));
+  }
+  return td;
+}
+
 export function yenCell(v: number | null, cls = ""): HTMLElement {
   return h("td", { class: `num ${cls}`, title: yenFull(v) }, yenShort(v));
 }

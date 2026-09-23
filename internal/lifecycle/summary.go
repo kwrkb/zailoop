@@ -10,16 +10,17 @@ type Summary struct {
 	Ministry  string
 	Category  string
 
-	Request     rs.Yen // ① FY N 概算要求
-	Initial     rs.Yen // ② FY N 当初
-	Current     rs.Yen // ② FY N 現額
-	Executed    rs.Yen // ③ FY N 執行
-	ExecRate    rs.Ratio
-	ExecState   State
-	CarriedOut  rs.Yen // ④ 翌年度繰越
-	Unused      rs.Yen // ④ 不用相当額（UnusedState が OK のとき）
-	UnusedDiff  int64  // ④ UnusedState が NeedsReview のときの負の差額
-	UnusedState State
+	Request       rs.Yen // ① FY N 概算要求
+	Initial       rs.Yen // ② FY N 当初
+	Supplementary rs.Yen // ② FY N 補正（当初が 0 で補正だけの事業がある）
+	Current       rs.Yen // ② FY N 現額
+	Executed      rs.Yen // ③ FY N 執行
+	ExecRate      rs.Ratio
+	ExecState     State
+	CarriedOut    rs.Yen // ④ 翌年度繰越
+	Unused        rs.Yen // ④ 不用相当額（UnusedState が OK のとき）
+	UnusedDiff    int64  // ④ UnusedState が NeedsReview のときの負の差額
+	UnusedState   State
 
 	Reflection  string // ⑥ 反映状況
 	Reflected   rs.Yen // ⑥ 反映額（一般会計 + 特別会計）
@@ -44,7 +45,7 @@ type Summary struct {
 func Summarize(lc *Lifecycle, th Thresholds) Summary {
 	sm := Summary{
 		ID: lc.Project.ID, SheetYear: lc.SheetYear, Name: lc.Project.Name, Ministry: lc.Project.Ministry, Category: lc.Project.Category,
-		Request: lc.Request.Amount, Initial: lc.Enacted.Initial, Current: lc.Enacted.Current,
+		Request: lc.Request.Amount, Initial: lc.Enacted.Initial, Supplementary: lc.Enacted.Supplementary, Current: lc.Enacted.Current,
 		Executed: lc.Execution.Executed, ExecRate: lc.Execution.Rate, ExecState: lc.Execution.State,
 		CarriedOut: lc.Settlement.CarriedOut, Unused: lc.Settlement.Unused, UnusedDiff: lc.Settlement.Diff, UnusedState: lc.Settlement.UnusedState,
 		Reflection: lc.Reflection.Status, NextInitial: lc.Reflection.NextInitial, NextRequest: lc.Reflection.Amount,
@@ -53,7 +54,7 @@ func Summarize(lc *Lifecycle, th Thresholds) Summary {
 		sm.Request = rs.Yen{}
 	}
 	if lc.Enacted.State != StateOK {
-		sm.Initial, sm.Current = rs.Yen{}, rs.Yen{}
+		sm.Initial, sm.Supplementary, sm.Current = rs.Yen{}, rs.Yen{}, rs.Yen{}
 	}
 	if lc.Reflection.State != StateOK {
 		sm.NextRequest = rs.Yen{}

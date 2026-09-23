@@ -60,6 +60,9 @@ func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 			}
 			p.kv("内訳(2-2)", strings.Join(parts, "、"))
 		}
+		if e.Notes != "" {
+			p.kv("その他特記事項", e.Notes)
+		}
 	} else {
 		p.kv("予算", e.State.String())
 	}
@@ -72,7 +75,7 @@ func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 		p.kv("執行額", Yen(x.Executed))
 		p.kv("執行率", Ratio(x.Rate))
 	case lifecycle.StateNotComputable:
-		p.kv("執行額", Yen(x.Executed)+"（歳出予算現額が 0 以下。予算は別事業に計上の可能性）")
+		p.kv("執行額", Yen(x.Executed)+"（歳出予算現額が 0 以下）")
 		p.kv("執行率", "—（算出対象外）")
 	default:
 		p.kv("執行", x.State.String())
@@ -148,6 +151,31 @@ func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 				line += "（" + b.Role + "）"
 			}
 			p.kv(line, Yen(b.Total))
+		}
+	}
+
+	if len(lc.Related) > 0 {
+		p.h("関連事業", "シートの記載どおり")
+		for _, r := range lc.Related {
+			p.kv(r.Kind, fmt.Sprintf("%s（ID %s）", r.Name, r.ID))
+		}
+	}
+	if lc.AllZero {
+		p.h("注記", "")
+		switch ps := lc.Parents(); {
+		case len(ps) > 0:
+			var names []string
+			for _, r := range ps {
+				names = append(names, fmt.Sprintf("%s（ID %s）", r.Name, r.ID))
+			}
+			p.f("  金額欄がすべて 0。関連事業に親事業として %s が記載されています", strings.Join(names, "、"))
+		case len(lc.ZeroNotes) > 0:
+			p.f("  金額欄がすべて 0")
+		default:
+			p.f("  金額欄がすべて 0。「その他特記事項」「主な増減理由」に記載はありません")
+		}
+		for _, nt := range lc.ZeroNotes {
+			p.f("  %s", nt)
 		}
 	}
 

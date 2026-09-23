@@ -118,7 +118,7 @@ func TestBuildMultiYear(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if st.Projects != 6 { // 11, 884, 1319, 3522, 18556, 21625（1319 は両年度、21625 は 2025 のみ）
+	if st.Projects != 7 { // 11, 884, 1319, 1937, 3522, 18556, 21625（1319 は両年度、1937 と 21625 は 2025 のみ）
 		t.Errorf("projects = %d", st.Projects)
 	}
 	detail, _ := os.ReadFile(filepath.Join(out, "p", "884.html"))
@@ -126,6 +126,23 @@ func TestBuildMultiYear(t *testing.T) {
 		if !strings.Contains(string(detail), want) {
 			t.Errorf("p/884.html missing %q", want)
 		}
+	}
+	// 1937 は金額欄がすべて 0 で、1-5 に親事業 1936 がある。1936 は抜粋にないのでリンクにしない
+	zero, _ := os.ReadFile(filepath.Join(out, "p", "1937.html"))
+	for _, want := range []string{"金額がすべて 0 の事業", "医療提供体制推進事業（予算事業ID 1936）", "その他特記事項", "その他特記事項（予算年度2021）: 医療提供体制推進事業費補助金23,948,718千円の内数", "<dt>親事業</dt>"} {
+		if !strings.Contains(string(zero), want) {
+			t.Errorf("p/1937.html missing %q", want)
+		}
+	}
+	if strings.Contains(string(zero), "p/1936.html") {
+		t.Errorf("p/1937.html links to a page that is not generated")
+	}
+	if strings.Contains(string(detail), "金額がすべて 0") {
+		t.Errorf("p/884.html should not have the zero-budget notice")
+	}
+	fund, _ := os.ReadFile(filepath.Join(out, "p", "3522.html"))
+	if !strings.Contains(string(fund), "<dt>基金造成した基金シート</dt>") {
+		t.Errorf("p/3522.html should list related projects")
 	}
 	renamed, _ := os.ReadFile(filepath.Join(out, "p", "1319.html"))
 	if !strings.Contains(string(renamed), "事業名の変遷") {

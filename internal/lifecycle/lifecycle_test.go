@@ -140,3 +140,32 @@ func TestClean(t *testing.T) {
 		}
 	}
 }
+
+func TestAllZeroAndParents(t *testing.T) {
+	zero := &rs.Sheet{FiscalYear: 2025,
+		Related: []rs.Related{{ID: "9", Name: "関連", Kind: "その他関連先"}, {ID: "1936", Name: "親", Kind: "親事業"}},
+		Budgets: []rs.BudgetYear{
+			{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(0), Current: y(0), Executed: y(0), NextRequest: y(0), Notes: "〇〇補助金の内数"}},
+			{Year: 2025, HasTotal: true, Total: rs.BudgetTotal{Initial: y(0)}},
+		}}
+	lc := Build(zero, Options{})
+	if !lc.AllZero {
+		t.Error("AllZero = false")
+	}
+	if ps := lc.Parents(); len(ps) != 1 || ps[0].ID != "1936" {
+		t.Errorf("Parents = %+v", ps)
+	}
+	if len(lc.ZeroNotes) != 1 || lc.ZeroNotes[0] != "その他特記事項（予算年度2024）: 〇〇補助金の内数" {
+		t.Errorf("ZeroNotes = %q", lc.ZeroNotes)
+	}
+	if lc.Enacted.Notes != "〇〇補助金の内数" {
+		t.Errorf("Enacted.Notes = %q", lc.Enacted.Notes)
+	}
+	zero.Budgets[1].Total.NextRequest = y(1)
+	if Build(zero, Options{}).AllZero {
+		t.Error("a non-zero request must clear AllZero")
+	}
+	if Build(&rs.Sheet{FiscalYear: 2025}, Options{}).AllZero {
+		t.Error("a sheet without budget rows is not AllZero")
+	}
+}

@@ -13,6 +13,7 @@
       reflection: r.rf >= 0 ? meta.reflections[r.rf] ?? "" : "",
       request: n(r.rq),
       initial: n(r.in),
+      supplementary: n(r.sp),
       current: n(r.cu),
       executed: n(r.ex),
       execRate: n(r.er),
@@ -342,7 +343,7 @@
       case "request":
         return yenCell(r.request);
       case "initial":
-        return yenCell(r.initial);
+        return initialCell(r);
       case "current":
         return yenCell(r.current);
       case "executed":
@@ -362,6 +363,13 @@
       h("input", { type: "checkbox", checked: showAll, onchange: (e) => onchange(e.target.checked) }),
       " \u8A73\u7D30\u5217\uFF08\u8981\u6C42\u30FB\u73FE\u984D\u30FB\u4E0D\u7528\u76F8\u5F53\u30FB\u6B21\u5E74\u5EA6\u8981\u6C42\uFF09"
     );
+  }
+  function initialCell(r) {
+    const td = yenCell(r.initial);
+    if (r.initial === 0 && r.supplementary !== null) {
+      td.appendChild(h("span", { class: "sub block", title: yenFull(r.supplementary) }, `\u88DC\u6B63 ${yenShort(r.supplementary)}`));
+    }
+    return td;
   }
   function yenCell(v, cls = "") {
     return h("td", { class: `num ${cls}`, title: yenFull(v) }, yenShort(v));
@@ -843,7 +851,7 @@
           h("td", { class: "num" }, ratePct(mn)),
           h("td", { class: "num" }, ratePct(mx)),
           h("td", { class: "rates muted" }, r.rates.map((v) => ratePct(v)).join(" / ")),
-          yenCell(r.initial),
+          initialCell(r),
           h("td", { class: "refl" }, r.reflection)
         );
       },

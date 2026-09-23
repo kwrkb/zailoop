@@ -203,7 +203,7 @@ func digest(tl *lifecycle.Timeline) []string {
 	case e.State != lifecycle.StateOK:
 		out = append(out, fmt.Sprintf("FY%d の予算額はシートにありません（%s。新規事業など）。", n, e.State))
 	case x.State == lifecycle.StateNotComputable:
-		out = append(out, fmt.Sprintf("FY%d は歳出予算現額が 0 以下で、執行額は %s（予算は別事業に計上されている可能性）。", n, render.YenShort(x.Executed)))
+		out = append(out, fmt.Sprintf("FY%d は歳出予算現額が 0 以下で、執行額は %s。", n, render.YenShort(x.Executed)))
 	case x.State == lifecycle.StateOK:
 		s := fmt.Sprintf("FY%d は歳出予算現額 %s のうち %s（%s）を執行", n, render.YenShort(e.Current), render.YenShort(x.Executed), render.Ratio(x.Rate))
 		var rest []string
@@ -222,6 +222,10 @@ func digest(tl *lifecycle.Timeline) []string {
 		out = append(out, s+"。")
 	default:
 		out = append(out, fmt.Sprintf("FY%d の歳出予算現額は %s、執行は%s。", n, render.YenShort(e.Current), x.State))
+	}
+
+	if e.State == lifecycle.StateOK && e.Initial.Valid && e.Initial.Value == 0 && e.Supplementary.Valid && e.Supplementary.Value != 0 {
+		out = append(out, fmt.Sprintf("FY%d の当初予算は 0 円で、補正予算は %s。", n, render.YenShort(e.Supplementary)))
 	}
 
 	ev, rf := lc.Evaluation, lc.Reflection

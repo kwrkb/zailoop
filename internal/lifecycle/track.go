@@ -79,6 +79,14 @@ type Timeline struct {
 	Years      []YearRow  // 予算年度の昇順
 	Loops      []Loop     // シートごと（昇順）
 	Notes      []string
+	// PastParents は古いシートの 1-5 に親事業として記載があり、最新シートには同じ親事業の記載がないもの。
+	PastParents []SheetRelated
+}
+
+// SheetRelated はどの事業年度のシートの記載かを添えた関連事業。
+type SheetRelated struct {
+	SheetYear int
+	rs.Related
 }
 
 // Track は同じ事業の複数年度シート（事業年度の昇順でなくてよい）から Timeline を作る。
@@ -102,9 +110,28 @@ func Track(sheets []*rs.Sheet, th Thresholds) *Timeline {
 		}
 	}
 	tl.Latest = lcs[len(lcs)-1]
+	tl.PastParents = pastParents(lcs)
 	tl.Years = trackYears(ss, tl)
 	tl.Loops = trackLoops(ss, lcs, th)
 	return tl
+}
+
+// pastParents は新しいシートから順に見て、より新しいシートに無い親事業を拾う（同じ ID は最新の記載だけ）。
+func pastParents(lcs []*Lifecycle) []SheetRelated {
+	seen := map[string]bool{}
+	for _, p := range lcs[len(lcs)-1].Parents() {
+		seen[p.ID] = true
+	}
+	var out []SheetRelated
+	for i := len(lcs) - 2; i >= 0; i-- {
+		for _, p := range lcs[i].Parents() {
+			if !seen[p.ID] {
+				seen[p.ID] = true
+				out = append(out, SheetRelated{SheetYear: lcs[i].SheetYear, Related: p})
+			}
+		}
+	}
+	return out
 }
 
 func trackYears(ss []*rs.Sheet, tl *Timeline) []YearRow {

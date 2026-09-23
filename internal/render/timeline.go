@@ -59,6 +59,13 @@ func Timeline(w io.Writer, tl *lifecycle.Timeline) error {
 		p.f("    → FY%d 当初 %s（%d年度シート）  FY%d 執行 %s（%s）", lp.SheetYear+1, Yen(lp.NextInitial), lp.SheetYear+1, lp.SheetYear, Yen(lp.Executed), Ratio(lp.ExecRate))
 		p.f("    判定: %s%s", lp.Verdict, verdictNote(lp))
 	}
+	if len(tl.PastParents) > 0 {
+		p.f("")
+		p.f("==== 古いシートにだけある親事業")
+		for _, r := range tl.PastParents {
+			p.f("  - %d年度シート: %s（ID %s）", r.SheetYear, r.Name, r.ID)
+		}
+	}
 	if len(tl.Notes) > 0 {
 		p.f("")
 		p.f("==== 注意（年度間の差異）")

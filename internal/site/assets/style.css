@@ -23,7 +23,7 @@ h1 { font-size:1.7rem; line-height:1.35; margin:0.15em 0 0.3em; letter-spacing:0
 h2 { font-size:1.15rem; margin:2.2em 0 0.7em; }
 h3 { font-size:1rem; margin:1.4em 0 0.4em; }
 h2 small, h3 small { font-weight:normal; color:var(--muted); font-size:0.8rem; margin-left:8px; }
-.muted, .sub { color:var(--muted); } .sub { font-size:0.9em; }
+.muted, .sub { color:var(--muted); } .sub { font-size:0.9em; } .sub.block { display:block; }
 nav.top { display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:20px; }
 nav.top .brand { color:var(--muted); letter-spacing:0.08em; }
 .id { color:var(--muted); font-weight:normal; margin-right:6px; }
@@ -58,6 +58,9 @@ table.timeline th.num, table.timeline td.num { text-align:right; font-variant-nu
 .digest h2 { margin:0 0 4px; font-size:0.85rem; color:var(--muted); font-weight:600; letter-spacing:0.08em; }
 .digest p { margin:4px 0; font-size:1.02rem; }
 .signals h2 { margin-top:1.4em; }
+.zero { background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--carry); border-radius:var(--radius); padding:14px 20px; margin:20px 0; }
+.zero h2 { margin:0 0 4px; font-size:0.85rem; color:var(--muted); font-weight:600; letter-spacing:0.08em; }
+.zero p { margin:4px 0; }
 .signals ul { list-style:none; padding:0; margin:0; display:grid; gap:6px; }
 .signals li { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 8px; }
 .signals .evidence { font-size:0.9rem; color:var(--muted); font-variant-numeric:tabular-nums; }
