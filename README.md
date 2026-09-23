@@ -12,7 +12,7 @@ go build ./cmd/zailoop
 ./zailoop build --years 2024,2025 --out site
 ```
 
-`site/index.html` はブラウザで直接開けます（file:// 可）。一覧・「ループの断絶」・成果指標・「ループ検証」（複数年度のとき）の 4 ビューがあり、各事業の詳細ページ（JS なし）に飛べます。断絶判定の閾値は `build` の引数（`--gap-ratio`, `--min-exec-rate`, `--min-unused`, `--unused-ratio`, `--outcome-low`, `--outcome-high`）で変えられます。
+`site/index.html` はブラウザで直接開けます（file:// 可）。一覧・「ループの断絶」・成果指標・「ループ検証」（複数年度のとき）の 4 ビューがあり、各事業の詳細ページ（JS なし）に飛べます。詳細ページにはシートの関連事業（親事業・子事業・統合・分割など）へのリンクと、金額がすべて 0 の事業ではシートの特記事項・増減理由の原文を出します。断絶判定の閾値は `build` の引数（`--gap-ratio`, `--min-exec-rate`, `--min-unused`, `--unused-ratio`, `--outcome-low`, `--outcome-high`）で変えられます。
 
 ## フロント（web/）の開発
 
@@ -39,7 +39,7 @@ npx wrangler deploy                               # https://zailoop.kwrkb.worker
 配布データは[公共データ利用規約 第1.0版（PDL1.0）](https://www.digital.go.jp/resources/open_data/public_data_license_v1.0)に基づいて利用しています。
 本リポジトリと生成したサイトは非公式で、国や府省庁が作成したものではありません。兆候とループ検証は zailoop 独自の目印で、不正や無駄を判定するものではありません。人が調べるべき事業を絞り込むためのものです。
 
-取得した CSV・ZIP はリポジトリに含めません（`data/` は `.gitignore`）。`testdata/` にはテスト用に 4 事業分だけ抜粋しています。
+取得した CSV・ZIP はリポジトリに含めません（`data/` は `.gitignore`）。`testdata/` にはテスト用に数事業分（2024 年度 5 事業、2025 年度 7 事業）だけ抜粋しています。
 
 ## ドキュメント
 
