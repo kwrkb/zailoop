@@ -317,7 +317,7 @@ func buildExecution(s *rs.Sheet, n int) Execution {
 	case !x.Executed.Valid:
 		x.State = StateMissing
 	case (!b.Total.Current.Valid || b.Total.Current.Value <= 0) && x.Executed.Value != 0:
-		// 現額が 0 以下なのに執行額がある（予算が別事業に計上されているケース）。執行額は原値を出し、率は対象外。
+		// 現額が 0 以下なのに執行額がある（docs/data-survey.md §6 の 2）。執行額は原値を出し、率は対象外。
 		x.State = StateNotComputable
 		x.Rate = rs.Ratio{}
 	case !b.Total.Current.Valid || b.Total.Current.Value <= 0:

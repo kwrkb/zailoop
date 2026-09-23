@@ -98,7 +98,7 @@ var SignalInfo = []SignalDesc{
 	{SignalLowExecution, "low_execution", "低執行", "執行率が低い"},
 	{SignalLargeUnused, "large_unused", "大きな不用", "不用相当額が額・率ともに大きい"},
 	{SignalCut, "cut", "縮減・廃止", "翌年度の概算要求への反映状況が縮減または廃止"},
-	{SignalExecutionWithoutBudget, "execution_without_budget", "予算なし執行", "歳出予算現額が 0 以下なのに執行額がある（予算が別事業に計上の可能性）"},
+	{SignalExecutionWithoutBudget, "execution_without_budget", "予算なし執行", "歳出予算現額が 0 以下なのに執行額がある"},
 	{SignalNegativeUnused, "negative_unused", "差額が負", "現額−執行−翌年度繰越 が負で整合しない"},
 	{SignalOutcomeShortfall, "outcome_shortfall", "成果未達", "アウトカム達成率の最小値が低い"},
 	{SignalOutcomeOvershoot, "outcome_overshoot", "成果超過", "アウトカム達成率の最大値が高すぎる"},
