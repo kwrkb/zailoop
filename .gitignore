@@ -4,3 +4,5 @@ prompt-*.md
 web/node_modules/
 /zailoop
 .wrangler/
+.claude/investigation-zero-budget.md
+.claude/zero-budget-research/

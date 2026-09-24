@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-var csvNumbers = []string{"1-2", "1-5", "2-1", "2-2", "3-1", "4-1", "5-1"}
+var csvNumbers = []string{"1-2", "1-5", "2-1", "2-2", "3-1", "4-1", "5-1", "5-4"}
 
 func fixtureDir() Dir { return Dir{Path: "../../testdata/2024", Year: 2024} }
 
@@ -155,6 +155,13 @@ func TestLoadSheetOtherProjects(t *testing.T) {
 				if budget == nil || !budget.Total.Current.Valid || budget.Total.Current.Value != 0 || budget.Total.Executed.Value <= 0 {
 					t.Errorf("unexpected 2023 budget: %+v", budget)
 				}
+				if !strings.HasPrefix(sheet.Project.Remarks, "「開発・整備関連」") || sheet.Project.URL != "https://www.soumu.go.jp/main_content/000211868.pdf" {
+					t.Errorf("remarks=%q url=%q", sheet.Project.Remarks, sheet.Project.URL)
+				}
+				if len(sheet.Obligations) != 7 || sheet.Obligations[6].Block == "" {
+					t.Fatalf("obligations=%+v", sheet.Obligations)
+				}
+				assertYen(t, "obligation", sheet.Obligations[6].Amount, 2681959000)
 			case "3522":
 				budget := sheet.Budget(2023)
 				if budget == nil || len(budget.Accounts) < 2 {
@@ -458,6 +465,25 @@ func TestPayeeHierarchy(t *testing.T) {
 	if len(sheet.Blocks[1].Payees[0].Contracts) != 1 {
 		t.Error("zero-valued contract was lost")
 	}
+}
+
+func TestObligations(t *testing.T) {
+	const sfx = "（国庫債務負担行為等による契約）"
+	dir := newTestDir(t, map[string][]csvValues{"5-4": {
+		{"支出先ブロック" + sfx: "A", "契約先名" + sfx: "契約先", "契約概要（契約名）" + sfx: "契約1", "契約額" + sfx: " 1,000 "},
+		{"契約先名" + sfx: "契約額の空欄"},
+		{"契約額" + sfx: "0"},
+		{},
+	}})
+	sheet, err := dir.LoadSheet("test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sheet.Obligations) != 3 || sheet.Obligations[0].Summary != "契約1" || sheet.Obligations[1].Amount.Valid {
+		t.Fatalf("obligations=%+v", sheet.Obligations)
+	}
+	assertYen(t, "first", sheet.Obligations[0].Amount, 1000)
+	assertYen(t, "zero", sheet.Obligations[2].Amount, 0)
 }
 
 func TestLoadSheetRealData(t *testing.T) {

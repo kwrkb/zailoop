@@ -56,6 +56,12 @@ func TestBuild(t *testing.T) {
 		}
 	}
 	zero, _ := os.ReadFile(filepath.Join(out, "p", "11.html"))
+	for _, want := range []string{`id="obligations"`, "2,681,959,000 円", "<summary>備考</summary>", "「開発・整備関連」",
+		`href="https://www.soumu.go.jp/main_content/000211868.pdf"`} {
+		if !strings.Contains(string(zero), want) {
+			t.Errorf("p/11.html missing %q", want)
+		}
+	}
 	if !strings.Contains(string(zero), "算出対象外") {
 		t.Errorf("p/11.html should mention 算出対象外")
 	}

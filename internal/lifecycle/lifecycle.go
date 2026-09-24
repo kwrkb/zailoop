@@ -167,6 +167,9 @@ type Lifecycle struct {
 	Notes       []string   // 整合チェックの警告（rs の Issues を含む）
 
 	Related []rs.Related // 1-5 の関連事業（シートの記載どおり）
+	// Obligations は 5-4 の国庫債務負担行為等による契約（シートの記載どおり）。
+	// 予算表の執行額や 5-1 の支出額とは別の欄なので、Years・判定・金額の集計には使わない。
+	Obligations []rs.Obligation
 	// AllZero は最新シートの全予算年度で当初・補正・現額・執行・翌年度要求がすべて 0（または空欄）。
 	// 予算が親事業などにまとめて計上され、事業単位の額が出ていない事業に多い。
 	AllZero bool
@@ -221,6 +224,7 @@ func Build(s *rs.Sheet, opt Options) *Lifecycle {
 	lc.Reflection = buildReflection(s, n)
 	lc.Payees, lc.BlockCount = buildPayees(s, top)
 	lc.Related = s.Related
+	lc.Obligations = s.Obligations
 	lc.AllZero = allZero(s.Budgets)
 	if lc.AllZero {
 		lc.ZeroNotes = zeroNotes(s.Budgets)

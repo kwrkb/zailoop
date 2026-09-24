@@ -29,14 +29,15 @@
 
 ## 全事業の読み取り（rs.Each）
 
-7 ファイル（1-2, 1-5, 2-1, 2-2, 3-1, 4-1, 5-1）を `groupReader` で同時に開き、各ファイルの「同一 ID の連続行」を ID 昇順にマージして 1 事業ずつ `Sheet` を組み立てる。ID が昇順でなければ `ErrUnordered`。`LoadSheet` も同じ `builder`/`table` を使う。
+8 ファイル（1-2, 1-5, 2-1, 2-2, 3-1, 4-1, 5-1, 5-4）を `groupReader` で同時に開き、各ファイルの「同一 ID の連続行」を ID 昇順にマージして 1 事業ずつ `Sheet` を組み立てる。ID が昇順でなければ `ErrUnordered`。`LoadSheet` も同じ `builder`/`table` を使う。
 
 ## 関連事業（1-5）
 
 - `rs.Sheet.Related` → `lifecycle.Lifecycle.Related`。`Parents()` は関連性が「親事業」のもの、`AllZero` は全予算年度の金額がすべて 0
 - `lifecycle.Timeline.PastParents` は古いシートにだけある親事業（年度つき）
 - `site.BuildMulti` は先に `rs.Multi.IDs()`（1-2 だけ読む）でページのある ID を集め、関連事業はその ID だけリンクにする
-- 詳細ページ: `AllZero` なら要点の下に「金額がすべて 0 の事業」、各段階の後に「関連事業」（全年度の特記事項・増減理由を重複除去して表示）、② 成立に FY N の「その他特記事項」
+- 詳細ページ: `AllZero` なら要点の下に「金額がすべて 0 の事業」（全年度の特記事項・増減理由を重複除去、基本情報の備考、5-4 の契約があればその旨）、各段階の後に「国庫債務負担行為等による契約」「関連事業」、② 成立に FY N の「その他特記事項」
+- `rs.Project.Remarks`（1-2 備考）・`URL`（事業概要URL）は「事業の目的」などと同じ欄に出す（`AllZero` の事業は備考を上の注記に出す）。`rs.Sheet.Obligations`（5-4）→ `lifecycle.Lifecycle.Obligations`。金額の集計・判定には使わない
 
 ## データの置き場
 

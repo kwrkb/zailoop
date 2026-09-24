@@ -37,6 +37,8 @@ type Project struct {
 	EndYear      string   // 事業終了（予定）年度（空あり）
 	MajorExpense []string // 主要経費（複数行を集約、重複なし、出現順）
 	Methods      []string // 実施方法で "1" が立っている項目名（直接実施/補助/負担/交付/分担金・拠出金/その他）
+	URL          string   // 事業概要URL（府省庁が示す事業のページ。空あり）
+	Remarks      string   // 備考（シート作成の経緯・過年度の執行額・改訂履歴などの自由記述。空あり）
 }
 
 // BudgetTotal は 2-1 の合計行（列「当初予算（合計）」〜「翌年度要求額（合計）」）。
@@ -183,6 +185,18 @@ type PayeeBlock struct {
 	Payees     []Payee
 }
 
+// Obligation は 5-4「国庫債務負担行為等による契約」の 1 件。5-1 の支出とは別の表で、
+// 契約額を予算表（2-1）の執行額や 5-1 の支出額と足し合わせてはならない。
+type Obligation struct {
+	Block   string // 支出先ブロック（5-1 のブロック記号と対応）
+	Payee   string // 契約先名
+	Summary string // 契約概要（契約名）
+	Amount  Yen    // 契約額
+	Method  string // 契約方式等
+	Bidders string // 入札者数（応募者数）
+	Rate    string // 落札率（％）
+}
+
 // Related は 1-5「関連事業」の 1 件。関連事業のない事業は空欄 1 行だけを持つので読み飛ばす。
 // ID はレビューシートのない事業（基金シート・セグメントシートなど）を指すことがある。
 type Related struct {
@@ -193,14 +207,15 @@ type Related struct {
 
 // Sheet は 1 年度分の CSV 群から組み立てた 1 事業のレビューシート。
 type Sheet struct {
-	FiscalYear int // 事業年度（CSV の「事業年度」列）
-	Project    Project
-	Related    []Related    // 1-5、CSV の出現順
-	Budgets    []BudgetYear // 予算年度の昇順
-	Items      []BudgetItem // 2-2、CSV の出現順
-	Indicators []Indicator  // 3-1、CSV の出現順
-	Evaluation Evaluation
-	Blocks     []PayeeBlock // 5-1、CSV の出現順
+	FiscalYear  int // 事業年度（CSV の「事業年度」列）
+	Project     Project
+	Related     []Related    // 1-5、CSV の出現順
+	Budgets     []BudgetYear // 予算年度の昇順
+	Items       []BudgetItem // 2-2、CSV の出現順
+	Indicators  []Indicator  // 3-1、CSV の出現順
+	Evaluation  Evaluation
+	Blocks      []PayeeBlock // 5-1、CSV の出現順
+	Obligations []Obligation // 5-4、CSV の出現順
 }
 
 // Budget は指定した予算年度の BudgetYear を返す。無ければ nil。

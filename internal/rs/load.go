@@ -16,7 +16,7 @@ type Dir struct {
 	Year int
 }
 
-// LoadSheet は7種類の CSV を逐次走査して、指定した事業のシートを返す。
+// LoadSheet は8種類の CSV を逐次走査して、指定した事業のシートを返す。
 // ID が存在しない場合は errors.Is(err, ErrNotFound) が true になる。
 func (d Dir) LoadSheet(id string) (*Sheet, error) {
 	sheet := new(Sheet)
@@ -69,6 +69,9 @@ func tables() []table {
 		{"5-1", payeeColumns, func(_ string, s *Sheet) builder {
 			return &payeeBuilder{sheet: s, blockIndex: -1, payeeIndex: -1}
 		}},
+		{"5-4", obligationColumns, func(_ string, s *Sheet) builder {
+			return &obligationBuilder{sheet: s}
+		}},
 	}
 }
 
@@ -77,7 +80,7 @@ var methodNames = []string{"直接実施", "補助", "負担", "交付", "分担
 var projectColumns = func() []string {
 	columns := []string{
 		"事業年度", "事業名", "府省庁", "局・庁", "課", "事業の目的", "事業の概要",
-		"事業区分", "事業開始年度", "事業終了（予定）年度", "主要経費",
+		"事業区分", "事業開始年度", "事業終了（予定）年度", "主要経費", "事業概要URL", "備考",
 	}
 	for _, method := range methodNames {
 		columns = append(columns, "実施方法ー"+method)
@@ -100,6 +103,7 @@ func (b *projectBuilder) row(r *csvRow) error {
 			Purpose: r.text("事業の目的"), Summary: r.text("事業の概要"),
 			Category: r.text("事業区分"), StartYear: r.text("事業開始年度"),
 			EndYear: r.text("事業終了（予定）年度"),
+			URL:     strings.TrimSpace(r.text("事業概要URL")), Remarks: strings.TrimSpace(r.text("備考")),
 		}
 		for _, method := range methodNames {
 			if strings.TrimSpace(r.text("実施方法ー"+method)) == "1" {

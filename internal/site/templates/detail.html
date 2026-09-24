@@ -36,7 +36,9 @@
   <p>{{.LC.SheetYear}}年度シートでは、全予算年度の当初予算・補正予算・歳出予算現額・執行額・翌年度要求額がすべて 0 です。</p>
   {{if .Parents}}<p>このシートの関連事業には、<strong>親事業</strong>として {{range $i, $p := .Parents}}{{if $i}}、{{end}}{{if $p.Href}}<a href="{{$p.Href}}">{{$p.Name}}</a>{{else}}{{$p.Name}}{{end}}（予算事業ID {{$p.ID}}）{{end}}が記載されています。</p>{{end}}
   {{range .PastParents}}<p>{{.SheetYear}}年度シートの関連事業には、<strong>親事業</strong>として {{if .Href}}<a href="{{.Href}}">{{.Name}}</a>{{else}}{{.Name}}{{end}}（予算事業ID {{.ID}}）が記載されています（{{$.LC.SheetYear}}年度シートには記載なし）。</p>{{end}}
-  {{range .LC.ZeroNotes}}<p class="sub">{{.}}</p>{{else}}<p class="sub">「その他特記事項」「主な増減理由」に記載はありません。</p>{{end}}
+  {{range .LC.ZeroNotes}}<p class="sub">{{.}}</p>{{else}}{{if not .LC.Project.Remarks}}<p class="sub">「その他特記事項」「主な増減理由」「備考」に記載はありません。</p>{{end}}{{end}}
+  {{with .LC.Project.Remarks}}<p class="sub">備考（{{$.LC.SheetYear}}年度シートの基本情報）: {{.}}</p>{{end}}
+  {{if .LC.Obligations}}<p class="sub">国庫債務負担行為等による契約の記載があります（<a href="#obligations">下記</a>）。</p>{{end}}
 </section>
 {{end}}
 
@@ -47,10 +49,12 @@
 </section>
 {{end}}
 
-{{if or .LC.Project.Purpose .LC.Project.Summary}}
+{{if .About}}
 <section class="about">
   {{with .LC.Project.Purpose}}<details><summary>事業の目的</summary><p>{{.}}</p></details>{{end}}
   {{with .LC.Project.Summary}}<details><summary>事業の概要</summary><p>{{.}}</p></details>{{end}}
+  {{if not .LC.AllZero}}{{with .LC.Project.Remarks}}<details><summary>備考</summary><p>{{.}}</p><p class="muted">{{$.LC.SheetYear}}年度シートの基本情報</p></details>{{end}}{{end}}
+  {{with .LC.Project.URL}}<p class="sub">事業概要（シートに記載の府省庁のページ）: <a href="{{.}}" rel="external">{{.}}</a></p>{{end}}
 </section>
 {{end}}
 
@@ -200,6 +204,16 @@
   <table class="blocks"><tbody>
   {{range .LC.Payees}}<tr><th>{{.Number}}</th><td>{{.Name}}{{with .Role}}<br><span class="sub">{{.}}</span>{{end}}</td><td class="num">{{yen .Total}}</td></tr>{{end}}
   </tbody></table>
+</section>
+{{end}}
+
+{{if .LC.Obligations}}
+<section class="stage" id="obligations"><h2>国庫債務負担行為等による契約 <small>{{.LC.SheetYear}}年度シートの記載どおり {{len .LC.Obligations}} 件。予算表の執行額・支出先の支出額とは別の欄で、足し合わせない</small></h2>
+  {{if gt (len .LC.Obligations) 10}}<details><summary>{{len .LC.Obligations}} 件を表示</summary>{{end}}
+  <table class="blocks obligations"><thead><tr><th>ブロック</th><th>契約名・契約先</th><th class="num">契約額</th><th>契約方式等</th></tr></thead><tbody>
+  {{range .LC.Obligations}}<tr><th>{{.Block}}</th><td>{{or .Summary "（契約名の記載なし）"}}{{with .Payee}}<br><span class="sub">{{.}}</span>{{end}}</td><td class="num">{{yen .Amount}}</td><td>{{.Method}}</td></tr>{{end}}
+  </tbody></table>
+  {{if gt (len .LC.Obligations) 10}}</details>{{end}}
 </section>
 {{end}}
 

@@ -100,6 +100,7 @@ type detailData struct {
 	Related     []relatedGroup
 	Parents     []relatedLink // AllZero の事業だけ。金額欄の注記に使う
 	PastParents []pastParent  // AllZero の事業だけ。古いシートにだけある親事業
+	About       bool          // 事業の目的・概要・備考・事業概要URL のどれかを出す
 	Generated   string
 	Root        string // index.html への相対パス（"../"）
 }
@@ -187,8 +188,15 @@ func writeDetail(w io.Writer, tl *lifecycle.Timeline, sm lifecycle.Summary, th l
 		Digest: digest(tl), Flow: flowSteps(lc, sm), WfIn: wfIn, WfOut: wfOut, WfNote: wfNote,
 		YearBars: ybars, Badges: signalBadges(tl, sm.Signals, th),
 		Related: relatedGroups(lc.Related, known, root), Parents: parents, PastParents: past,
+		About:     aboutSection(lc),
 		Generated: generated, Root: root,
 	})
+}
+
+// aboutSection は「事業の目的」などの欄を出すかを返す。金額がすべて 0 の事業の備考は、上の注記に出す。
+func aboutSection(lc *lifecycle.Lifecycle) bool {
+	pr := lc.Project
+	return pr.Purpose != "" || pr.Summary != "" || pr.URL != "" || (pr.Remarks != "" && !lc.AllZero)
 }
 
 func unusedNote(st lifecycle.Settlement) string {

@@ -51,6 +51,7 @@ div.loop { border-left:4px solid var(--none); padding:4px 12px; margin:8px 0; ba
 div.loop.good { border-color:var(--good); } div.loop.attn { border-color:var(--warn); } div.loop .verdict { font-weight:bold; margin-left:8px; }
 div.loop.attn .verdict { color:var(--attn); } div.loop.good .verdict { color:var(--good); } div.loop .note { font-size:0.9rem; color:var(--muted); }
 table.timeline th.num, table.timeline td.num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+table.obligations thead th, table.obligations td.num { white-space:nowrap; } table.obligations th.num { text-align:right; }
 
 /* 詳細: 要点と兆候 */
 .detail .hero { margin-bottom:8px; }
@@ -111,7 +112,7 @@ h2.part { margin-top:2.8em; padding-top:1em; border-top:1px solid var(--line); }
   dl { grid-template-columns:1fr; gap:0; } dd { margin-bottom:6px; }
   .wf-row { grid-template-columns:6.5em minmax(0, 1fr) 6.5em; gap:8px; }
   .wf { padding:8px 12px 12px; }
-  table.timeline, .yeartable, table.outcomes { display:block; overflow-x:auto; }
+  table.timeline, .yeartable, table.outcomes, table.obligations { display:block; overflow-x:auto; }
   table.timeline th, table.timeline td { white-space:nowrap; }
 }
 

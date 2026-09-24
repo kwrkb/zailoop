@@ -157,11 +157,25 @@ func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 		}
 	}
 
+	if len(lc.Obligations) > 0 {
+		p.h("国庫債務負担行為等による契約", fmt.Sprintf("%d年度シートの記載どおり %d 件（予算表の執行額・支出先の支出額とは別の欄で、足し合わせない）", lc.SheetYear, len(lc.Obligations)))
+		for _, o := range lc.Obligations {
+			p.kv(strings.TrimSpace(o.Block+" "+or(o.Summary, "（契約名の記載なし）")), strings.Join(nonEmpty(Yen(o.Amount), o.Payee, o.Method), "  "))
+		}
+	}
+
 	if len(lc.Related) > 0 {
 		p.h("関連事業", "シートの記載どおり")
 		for _, r := range lc.Related {
 			p.kv(r.Kind, fmt.Sprintf("%s（ID %s）", r.Name, r.ID))
 		}
+	}
+	if pr.Remarks != "" {
+		p.h("備考", fmt.Sprintf("%d年度シートの基本情報", lc.SheetYear))
+		p.f("  %s", pr.Remarks)
+	}
+	if pr.URL != "" {
+		p.kv("事業概要URL", pr.URL)
 	}
 	if lc.AllZero {
 		p.h("注記", "")
@@ -172,13 +186,19 @@ func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 				names = append(names, fmt.Sprintf("%s（ID %s）", r.Name, r.ID))
 			}
 			p.f("  金額欄がすべて 0。関連事業に親事業として %s が記載されています", strings.Join(names, "、"))
-		case len(lc.ZeroNotes) > 0:
+		case len(lc.ZeroNotes) > 0 || pr.Remarks != "":
 			p.f("  金額欄がすべて 0")
 		default:
-			p.f("  金額欄がすべて 0。「その他特記事項」「主な増減理由」に記載はありません")
+			p.f("  金額欄がすべて 0。「その他特記事項」「主な増減理由」「備考」に記載はありません")
 		}
 		for _, nt := range lc.ZeroNotes {
 			p.f("  %s", nt)
+		}
+		if pr.Remarks != "" {
+			p.f("  基本情報の「備考」に記載があります（上記）")
+		}
+		if len(lc.Obligations) > 0 {
+			p.f("  国庫債務負担行為等による契約の記載があります（上記）")
 		}
 	}
 

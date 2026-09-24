@@ -182,6 +182,8 @@ func TestEachRowErrorContext(t *testing.T) {
 				bad["反映額（一般会計）"] = "bad"
 			case "5-1":
 				bad["金額"] = "1" // A builder error, rather than csvRow.err.
+			case "5-4":
+				bad["契約額（国庫債務負担行為等による契約）"] = "bad"
 			}
 			if number != "1-2" {
 				rows[number] = []csvValues{bad}

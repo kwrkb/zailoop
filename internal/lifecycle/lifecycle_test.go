@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/kwrkb/zailoop/internal/rs"
@@ -167,5 +168,20 @@ func TestAllZeroAndParents(t *testing.T) {
 	}
 	if Build(&rs.Sheet{FiscalYear: 2025}, Options{}).AllZero {
 		t.Error("a sheet without budget rows is not AllZero")
+	}
+}
+
+// 5-4 の契約はシートの記載として渡すだけで、金額・年度推移・AllZero・兆候を変えない。
+func TestObligationsDoNotAffectAmounts(t *testing.T) {
+	z := rs.Yen{Valid: true}
+	s := &rs.Sheet{FiscalYear: 2025, Project: rs.Project{ID: "1"},
+		Budgets: []rs.BudgetYear{{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: z, Current: z, Executed: z}}}}
+	without := Build(s, Options{})
+	s.Obligations = []rs.Obligation{{Block: "A", Amount: rs.Yen{Value: 14_000_000_000, Valid: true}}}
+	with := Build(s, Options{})
+	if len(with.Obligations) != 1 || !with.AllZero || with.AllZero != without.AllZero ||
+		!reflect.DeepEqual(with.Years, without.Years) || with.Execution != without.Execution ||
+		!reflect.DeepEqual(Summarize(with, DefaultThresholds()).Signals, Summarize(without, DefaultThresholds()).Signals) {
+		t.Errorf("obligations changed amounts or judgments: with=%+v without=%+v", with, without)
 	}
 }

@@ -67,3 +67,35 @@ func TestYenShort(t *testing.T) {
 		}
 	}
 }
+
+// 金額がすべて 0 で、説明が基本情報の備考と 5-4 の契約にしかない事業。
+func TestTextAllZeroRemarksAndObligations(t *testing.T) {
+	z := rs.Yen{Valid: true}
+	s := &rs.Sheet{FiscalYear: 2025, Project: rs.Project{ID: "1", Name: "x", Remarks: "2024年度執行額 1,000千円", URL: "https://example.go.jp/x"},
+		Budgets:     []rs.BudgetYear{{Year: 2025, HasTotal: true, Total: rs.BudgetTotal{Initial: z, Current: z}}},
+		Obligations: []rs.Obligation{{Block: "A", Payee: "契約先", Summary: "契約1", Amount: rs.Yen{Value: 5000, Valid: true}, Method: "一般競争入札"}},
+	}
+	var buf bytes.Buffer
+	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{})); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	for _, want := range []string{"2025年度シートの基本情報", "2024年度執行額 1,000千円", "https://example.go.jp/x", "国庫債務負担行為等による契約", "A 契約1", "5,000 円  契約先  一般競争入札",
+		"基本情報の「備考」に記載があります", "国庫債務負担行為等による契約の記載があります"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output missing %q\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "記載はありません") {
+		t.Errorf("remarks exist, so the sheet is not silent:\n%s", out)
+	}
+
+	s.Project.Remarks, s.Obligations = "", nil
+	buf.Reset()
+	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{})); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "「その他特記事項」「主な増減理由」「備考」に記載はありません") {
+		t.Errorf("missing no-notes message:\n%s", buf.String())
+	}
+}
