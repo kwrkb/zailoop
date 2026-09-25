@@ -5,7 +5,7 @@
 # 空のファイルは awk の FNR==1 に届かず素通りするので、先に見る
 out=$(
 for f in "$@"; do if [ ! -f "$f" ]; then echo "$f: ファイルがない"; elif [ ! -s "$f" ]; then echo "$f: 空のファイル"; fi; done
-awk -v signals='request_gap|low_execution|large_unused|cut|execution_without_budget|negative_unused|outcome_shortfall|outcome_overshoot|no_outcome_actual|reflection_contradicted|request_zeroed' '
+awk -v signals='request_gap|low_execution|large_unused|cut|execution_without_budget|negative_unused|outcome_shortfall|outcome_overshoot|no_outcome_actual|reflection_contradicted|request_zeroed|amount_revised' '
 function flush(){ if(f=="")return
   for(k in need) if(!(k in seen)) print f": 必須の項目がない: "k
   for(k in seen) if(seen[k]>1 && k!~/^(sheet|kind|sheet_ref|source|next)$/) print f": 繰り返せない項目: "k
@@ -14,7 +14,7 @@ function flush(){ if(f=="")return
   delete seen }
 function verdict(v){ return v~/^(一致|一部|不一致|候補)$/ }
 BEGIN{split("id name sheet checked status kind question",r," "); for(i in r) need[r[i]]=1
-  kinds="^(" signals "|all_zero|zero_with_spending|amount_revised|link_revised|id_moved|external_mismatch|other)$"}
+  kinds="^(" signals "|all_zero|zero_with_spending|link_revised|id_moved|external_mismatch|other)$"}
 FNR==1{flush(); f=FILENAME; h=1; body=0; id=""}
 h && /^$/{h=0; next}
 !h && /^## /{body=1}

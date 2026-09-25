@@ -317,6 +317,16 @@ func evidenceText(ev lifecycle.Evidence) string {
 		return fmt.Sprintf("%d年度シートの反映「%s」、FY%d 当初 %s → FY%d 当初 %s", ev.Year, ev.Text, ev.Year, render.YenShort(ev.Base), ev.Year+1, render.YenShort(ev.Amount))
 	case lifecycle.SignalRequestZeroed:
 		return fmt.Sprintf("FY%d 要求 %s → FY%d 当初 %s", ev.Year+1, render.YenShort(ev.Base), ev.Year+1, render.YenShort(ev.Amount))
+	case lifecycle.SignalAmountRevised:
+		if len(ev.Revisions) == 0 {
+			return ""
+		}
+		r := ev.Revisions[0]
+		s := fmt.Sprintf("FY%d %s %d年度シート %s → %d年度シート %s", r.FY, r.Item, r.OldSheet, render.YenShort(r.Old), r.NewSheet, render.YenShort(r.New))
+		if n := len(ev.Revisions) - 1; n > 0 {
+			s += fmt.Sprintf("（ほか %d 件）", n)
+		}
+		return s
 	}
 	return ""
 }

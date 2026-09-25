@@ -1,6 +1,8 @@
 package lifecycle
 
 import (
+	"math"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -16,10 +18,12 @@ type Thresholds struct {
 	LargeUnusedRatio float64 // 不用相当額/現額 がこれ以上で「大きな不用」
 	OutcomeShortfall float64 // アウトカム達成率（%）の最小値がこれ未満で「未達」
 	OutcomeOvershoot float64 // アウトカム達成率（%）の最大値がこれ超で「超過」
+	RevisionRatio    float64 // シート間の改訂で |新−旧|/|旧| がこれ以上なら「シート間の改訂」
 }
 
 // DefaultThresholds は 2024 年度実データの分布から置いた既定値
 // （当初/要求比の p10 ≈ 0.55、執行率の p25 ≈ 0.64、不用率の p75 ≈ 0.17）。
+// RevisionRatio は 2024→2025 シートでごく小さな改訂を除く値（対象の改訂がある 93 事業 → 70 事業。1% 未満の改訂 47 件のうち 33 件は 0.1% 未満）。
 func DefaultThresholds() Thresholds {
 	return Thresholds{
 		RequestGapRatio:  0.5,
@@ -28,6 +32,7 @@ func DefaultThresholds() Thresholds {
 		LargeUnusedRatio: 0.2,
 		OutcomeShortfall: 80,
 		OutcomeOvershoot: 200,
+		RevisionRatio:    0.01,
 	}
 }
 
@@ -52,6 +57,9 @@ func (t Thresholds) WithDefaults() Thresholds {
 	if t.OutcomeOvershoot == 0 {
 		t.OutcomeOvershoot = d.OutcomeOvershoot
 	}
+	if t.RevisionRatio == 0 {
+		t.RevisionRatio = d.RevisionRatio
+	}
 	return t
 }
 
@@ -70,6 +78,7 @@ const (
 	SignalNoOutcomeActual                           // アウトカム指標があるのに確定年度の達成率がない
 	SignalReflectionContradicted                    // 縮減・廃止・終了予定なのに翌年の当初予算が増えた（複数年度）
 	SignalRequestZeroed                             // 概算要求があったのに翌年の当初予算が 0（複数年度）
+	SignalAmountRevised                             // 同じ予算年度の金額がシート間で変わった（複数年度）
 )
 
 // Has は s が f をすべて含むとき true。
@@ -105,6 +114,7 @@ var SignalInfo = []SignalDesc{
 	{SignalNoOutcomeActual, "no_outcome_actual", "成果実績なし", "定量的アウトカム指標があるのに確定年度の達成率がない（新規事業を除く）"},
 	{SignalReflectionContradicted, "reflection_contradicted", "反映要確認", "前年シートの反映状況が縮減・廃止・終了予定だったのに、翌年の当初予算が増えた（事業の再編・移管などの可能性もある）"},
 	{SignalRequestZeroed, "request_zeroed", "要求ゼロ査定", "前年シートで概算要求があったのに、翌年の当初予算が 0"},
+	{SignalAmountRevised, "amount_revised", "シート間の改訂", "古いシートと新しいシートで、同じ予算年度の当初予算、または確定済みの年度の現額・執行額が変わった（当年度だった現額は 0 になった場合だけ）。組み替えや記入の訂正でも起こる"},
 }
 
 // DetectLoop は翌年のシートと突き合わせたループから兆候を判定する。
@@ -117,6 +127,57 @@ func DetectLoop(lp Loop) Signal {
 		s |= SignalRequestZeroed
 	}
 	return s
+}
+
+// QualifyingRevisions は Timeline の改訂のうち「シート間の改訂」に数えるものを、差の大きい順に返す。
+// 数えるのは、古いシート S の時点で成立済みの当初予算（FY ≤ S）、確定済みの年度（FY ≤ S−1）の現額・執行額、
+// 当年度（FY S）の現額が 0 になったもの。当年度の現額は補正・繰越・流用で変わるのが普通なので、それ以外は数えない。
+// 変化率 |新−旧|/|旧| が th.RevisionRatio 未満は除く（旧が 0 なら除かない）。
+func QualifyingRevisions(tl *Timeline, th Thresholds) []Revision {
+	th = th.WithDefaults()
+	var out []Revision
+	for _, y := range tl.Years {
+		for _, r := range y.Revised {
+			switch r.Item {
+			case "当初予算":
+				if r.FY > r.OldSheet {
+					continue
+				}
+			case "歳出予算現額":
+				if r.FY > r.OldSheet-1 && !(r.New.Value == 0 && r.Old.Value != 0) {
+					continue
+				}
+			case "執行額":
+				if r.FY > r.OldSheet-1 {
+					continue
+				}
+			default:
+				continue
+			}
+			if r.Old.Value != 0 && math.Abs(float64(r.New.Value-r.Old.Value))/math.Abs(float64(r.Old.Value)) < th.RevisionRatio {
+				continue
+			}
+			out = append(out, r)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool { return absDiff(out[i]) > absDiff(out[j]) })
+	return out
+}
+
+func absDiff(r Revision) int64 {
+	d := r.New.Value - r.Old.Value
+	if d < 0 {
+		return -d
+	}
+	return d
+}
+
+// DetectRevision は Timeline のシート間の改訂から兆候を判定する。
+func DetectRevision(tl *Timeline, th Thresholds) Signal {
+	if len(QualifyingRevisions(tl, th)) > 0 {
+		return SignalAmountRevised
+	}
+	return 0
 }
 
 // Detect は Lifecycle から断絶の兆候を判定する。判定は Lifecycle のフィールドだけから求める。
@@ -210,13 +271,14 @@ func ParseRate(s string) (float64, bool) {
 // 使うフィールドは兆候ごとに決まる（Explain のコメント参照）。
 type Evidence struct {
 	Signal          Signal
-	Observed        float64 // 比率（0〜1）または達成率（%）
-	Threshold       float64 // Observed と比べた閾値
-	Amount          rs.Yen  // 観測した金額
-	ThresholdAmount int64   // Amount と比べた閾値（大きな不用）
-	Base            rs.Yen  // 比較元の金額
-	Text            string  // 反映状況など文字列の根拠
-	Year            int     // ループの兆候で比べたシートの事業年度 S（FY S 当初 → FY S+1）
+	Observed        float64    // 比率（0〜1）または達成率（%）
+	Threshold       float64    // Observed と比べた閾値
+	Amount          rs.Yen     // 観測した金額
+	ThresholdAmount int64      // Amount と比べた閾値（大きな不用）
+	Base            rs.Yen     // 比較元の金額
+	Text            string     // 反映状況など文字列の根拠
+	Year            int        // ループの兆候で比べたシートの事業年度 S（FY S 当初 → FY S+1）
+	Revisions       []Revision // シート間の改訂（差の大きい順）
 }
 
 // Explain は s に立っている兆候について、Detect / DetectLoop が見た値を返す。条件は再判定しない。
@@ -231,6 +293,7 @@ type Evidence struct {
 //   - no_outcome_actual: なし
 //   - reflection_contradicted: Year=S, Text=S シートの反映状況, Base=FY S 当初, Amount=FY S+1 当初
 //   - request_zeroed: Year=S, Base=S シートの FY S+1 概算要求, Amount=FY S+1 当初
+//   - amount_revised: Revisions=QualifyingRevisions
 func Explain(tl *Timeline, s Signal, th Thresholds) []Evidence {
 	th = th.WithDefaults()
 	lc := tl.Latest
@@ -273,6 +336,8 @@ func Explain(tl *Timeline, s Signal, th Thresholds) []Evidence {
 			ev.Year, ev.Text, ev.Base, ev.Amount = prev.SheetYear, prev.Reflection, prev.Initial, prev.NextInitial
 		case SignalRequestZeroed:
 			ev.Year, ev.Base, ev.Amount = prev.SheetYear, prev.NextRequest, prev.NextInitial
+		case SignalAmountRevised:
+			ev.Revisions = QualifyingRevisions(tl, th)
 		}
 		out = append(out, ev)
 	}

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kwrkb/zailoop/internal/lifecycle"
 	"github.com/kwrkb/zailoop/internal/render"
 	"github.com/kwrkb/zailoop/internal/rs"
 )
@@ -78,7 +79,7 @@ func TestBuild(t *testing.T) {
 	if err := json.Unmarshal([]byte(raw), &p); err != nil {
 		t.Fatalf("embedded JSON invalid: %v\n%s", err, raw[:200])
 	}
-	if p.Meta.Count != 5 || p.Meta.SheetYear != 2024 || p.Meta.ActualYear != 2023 || len(p.Rows) != 5 || len(p.Meta.Signals) == 0 {
+	if p.Meta.Count != 5 || p.Meta.SheetYear != 2024 || p.Meta.ActualYear != 2023 || len(p.Rows) != 5 || len(p.Meta.Signals) != len(lifecycle.SignalInfo) {
 		t.Errorf("payload meta = %+v rows=%d", p.Meta, len(p.Rows))
 	}
 	var r884 *Row

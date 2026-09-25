@@ -24,6 +24,7 @@
 
 - `rs.Multi{Dirs}` は各年度の `Dir` のイテレータを並走させ、同じ ID のシートを年度順に `[]*Sheet` で渡す。`Dir.Year` と CSV の事業年度が違えばエラー
 - `lifecycle.Track(sheets)` → `Timeline{Years, Loops, Names, Notes}`。`Years` は予算年度ごとに最新シートの値、`Loops` はシート S の反映 → S+1 の当初・執行
+- `YearRow.Revised` は古いシートとの差異（`Revision`、`String()` が注記の文言）。兆候「シート間の改訂」に数えるのは `QualifyingRevisions` で絞ったものだけ（注記はすべての差異）
 - `SummarizeTimeline` は最新シートの `Summary` に `PrevReflection / PrevInitial / LoopVerdict / Renamed` を足す。JSON キーは `pr, pi, lv, rn`
 - フロントの「ループ検証」ビュー（`web/src/views/loops.ts`）は `nextInitial − prevInitial` で増減を出す（判定自体は Go の Verdict）
 

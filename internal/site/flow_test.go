@@ -140,6 +140,28 @@ func TestSignalBadgesEvidence(t *testing.T) {
 	}
 }
 
+func TestSignalBadgesAmountRevised(t *testing.T) {
+	s24 := &rs.Sheet{FiscalYear: 2024, Project: rs.Project{ID: "1"}, Budgets: []rs.BudgetYear{
+		{Year: 2023, HasTotal: true, Total: rs.BudgetTotal{Initial: y(1_000_000_000), Current: y(1_000_000_000), Executed: y(900_000_000)}},
+		{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(14_000_000_000), Current: y(14_000_000_000)}},
+	}}
+	s25 := &rs.Sheet{FiscalYear: 2025, Project: rs.Project{ID: "1"}, Budgets: []rs.BudgetYear{
+		{Year: 2023, HasTotal: true, Total: rs.BudgetTotal{Initial: y(1_000_000_000), Current: y(1_000_000_000), Executed: y(800_000_000)}},
+		{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(0), Current: y(0), Executed: y(0)}},
+	}}
+	tl := lifecycle.Track([]*rs.Sheet{s24, s25}, lifecycle.Thresholds{})
+	sm := lifecycle.SummarizeTimeline(tl, lifecycle.Thresholds{})
+	var got string
+	for _, b := range signalBadges(tl, sm.Signals, lifecycle.Thresholds{}) {
+		if b.Label == "シート間の改訂" {
+			got = b.Evidence
+		}
+	}
+	if want := "FY2024 当初予算 2024年度シート 140 億円 → 2025年度シート 0 円（ほか 2 件）"; got != want {
+		t.Errorf("evidence = %q, want %q", got, want)
+	}
+}
+
 func TestDigestSupplementaryOnly(t *testing.T) {
 	tl := lifecycle.Track([]*rs.Sheet{sheetWith(rs.BudgetTotal{Initial: y(0), Supplementary: y(500000000), Current: y(500000000), Executed: y(400000000)})}, lifecycle.Thresholds{})
 	got := strings.Join(digest(tl), "\n")

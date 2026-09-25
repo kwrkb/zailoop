@@ -20,6 +20,8 @@ function thresholdText(code: string, meta: Meta): string {
       return `達成率の最小 < ${t.OutcomeShortfall}%`;
     case "outcome_overshoot":
       return `達成率の最大 > ${t.OutcomeOvershoot}%`;
+    case "amount_revised":
+      return `改訂の変化率 ≥ ${t.RevisionRatio}`;
     default:
       return "";
   }

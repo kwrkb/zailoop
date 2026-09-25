@@ -456,6 +456,8 @@
         return `\u9054\u6210\u7387\u306E\u6700\u5C0F < ${t.OutcomeShortfall}%`;
       case "outcome_overshoot":
         return `\u9054\u6210\u7387\u306E\u6700\u5927 > ${t.OutcomeOvershoot}%`;
+      case "amount_revised":
+        return `\u6539\u8A02\u306E\u5909\u5316\u7387 \u2265 ${t.RevisionRatio}`;
       default:
         return "";
     }

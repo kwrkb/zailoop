@@ -38,6 +38,7 @@ const usage = `zailoop: 予算事業のライフサイクル（要求→成立�
   zailoop version                                 バージョンを表示する
     閾値: --gap-ratio 0.5 --min-exec-rate 0.5 --min-unused 1000000000
           --unused-ratio 0.2 --outcome-low 80 --outcome-high 200
+          --revision-ratio 0.01（複数年度）
 
 データは <data>/raw/ に ZIP、<data>/csv/ に CSV として置く。
 ` + render.Attribution + `
@@ -254,6 +255,7 @@ func runBuild(args []string) error {
 	fs.Float64Var(&th.LargeUnusedRatio, "unused-ratio", d.LargeUnusedRatio, "不用相当額/現額 がこれ以上で「大きな不用」")
 	fs.Float64Var(&th.OutcomeShortfall, "outcome-low", d.OutcomeShortfall, "アウトカム達成率（%）がこれ未満で「成果未達」")
 	fs.Float64Var(&th.OutcomeOvershoot, "outcome-high", d.OutcomeOvershoot, "アウトカム達成率（%）がこれ超で「成果超過」")
+	fs.Float64Var(&th.RevisionRatio, "revision-ratio", d.RevisionRatio, "シート間で同じ予算年度の金額の変化率がこれ以上で「シート間の改訂」（複数年度）")
 	pos, err := parseInterspersed(fs, args)
 	if errors.Is(err, flag.ErrHelp) {
 		return nil

@@ -38,7 +38,7 @@ func TestTrack884(t *testing.T) {
 	if y2024.Source != 2025 || y2024.Initial.Value != 11200000 || y2024.Executed.Value != 15000000 || y2024.ExecState != StateOK || y2024.Request.Value != 42023000 {
 		t.Errorf("FY2024 row = %+v", y2024)
 	}
-	if len(y2024.Revised) != 1 || !strings.Contains(y2024.Revised[0], "当初予算") || !strings.Contains(y2024.Revised[0], "11169000") {
+	if len(y2024.Revised) != 1 || !strings.Contains(y2024.Revised[0].String(), "当初予算") || !strings.Contains(y2024.Revised[0].String(), "11169000") {
 		t.Errorf("revised = %v", y2024.Revised)
 	}
 	y2025 := tl.Years[4]
@@ -67,6 +67,13 @@ func TestTrack884(t *testing.T) {
 	}
 	if sm.Signals.Has(SignalReflectionContradicted) {
 		t.Errorf("unexpected contradiction")
+	}
+	// FY2024 当初 11,169,000 → 11,200,000 は 0.28% で、既定の閾値 1% 未満
+	if sm.Signals.Has(SignalAmountRevised) {
+		t.Errorf("unexpected amount_revised: %v", QualifyingRevisions(tl, Thresholds{}))
+	}
+	if !SummarizeTimeline(tl, Thresholds{RevisionRatio: 0.001}).Signals.Has(SignalAmountRevised) {
+		t.Errorf("amount_revised not detected with 0.1%%")
 	}
 }
 
@@ -97,6 +104,65 @@ func TestTrackContradictionAndZeroed(t *testing.T) {
 	s24.Evaluation.Reflection = "現状通り"
 	if tl := Track([]*rs.Sheet{s24, s25}, Thresholds{}); tl.Loops[0].Verdict != VerdictNeutral {
 		t.Errorf("neutral = %+v", tl.Loops[0])
+	}
+}
+
+func TestAmountRevised(t *testing.T) {
+	// 古いシート 2024 の FY2023（確定）と FY2024（当年度）、新しいシート 2025 で値を変えて比べる
+	old := func() *rs.Sheet {
+		return &rs.Sheet{FiscalYear: 2024, Project: rs.Project{ID: "1"}, Budgets: []rs.BudgetYear{
+			{Year: 2023, HasTotal: true, Total: rs.BudgetTotal{Initial: y(1000), Current: y(1000), Executed: y(900)}},
+			{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(1000), Current: y(1000)}},
+		}}
+	}
+	cases := []struct {
+		name string
+		set  func(b []rs.BudgetYear) // 新しいシートの FY2023, FY2024
+		want []string                // QualifyingRevisions の Item（差の大きい順）
+	}{
+		{"変化なし", func(b []rs.BudgetYear) {}, nil},
+		{"当年度の当初が 1% 以上", func(b []rs.BudgetYear) { b[1].Total.Initial = y(1010) }, []string{"当初予算"}},
+		{"当年度の当初が 1% 未満", func(b []rs.BudgetYear) { b[1].Total.Initial = y(1009) }, nil},
+		{"当年度の現額が変わるだけ", func(b []rs.BudgetYear) { b[1].Total.Current = y(3000) }, nil},
+		{"当年度の現額が 0 になる", func(b []rs.BudgetYear) { b[1].Total.Current = y(0) }, []string{"歳出予算現額"}},
+		{"確定年度の現額", func(b []rs.BudgetYear) { b[0].Total.Current = y(1100) }, []string{"歳出予算現額"}},
+		{"確定年度の執行と当初（差の大きい順）", func(b []rs.BudgetYear) { b[0].Total.Executed = y(500); b[0].Total.Initial = y(1200) }, []string{"執行額", "当初予算"}},
+	}
+	for _, c := range cases {
+		s25 := &rs.Sheet{FiscalYear: 2025, Project: rs.Project{ID: "1"}, Budgets: []rs.BudgetYear{
+			{Year: 2023, HasTotal: true, Total: rs.BudgetTotal{Initial: y(1000), Current: y(1000), Executed: y(900)}},
+			{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(1000), Current: y(1000), Executed: y(800)}},
+		}}
+		c.set(s25.Budgets)
+		tl := Track([]*rs.Sheet{old(), s25}, Thresholds{})
+		var got []string
+		for _, r := range QualifyingRevisions(tl, Thresholds{}) {
+			got = append(got, r.Item)
+		}
+		if strings.Join(got, ",") != strings.Join(c.want, ",") {
+			t.Errorf("%s: got %v want %v", c.name, got, c.want)
+		}
+		if has := SummarizeTimeline(tl, Thresholds{}).Signals.Has(SignalAmountRevised); has != (len(c.want) > 0) {
+			t.Errorf("%s: signal = %v", c.name, has)
+		}
+	}
+	// 旧が 0 なら閾値によらず数える。根拠は差の大きい順の改訂
+	s24 := old()
+	s24.Budgets[0].Total.Initial = y(0)
+	s25 := &rs.Sheet{FiscalYear: 2025, Project: rs.Project{ID: "1"}, Budgets: []rs.BudgetYear{
+		{Year: 2023, HasTotal: true, Total: rs.BudgetTotal{Initial: y(5), Current: y(1000), Executed: y(900)}},
+		{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(0), Current: y(0)}},
+	}}
+	tl := Track([]*rs.Sheet{s24, s25}, Thresholds{RevisionRatio: 0.5})
+	evs := Explain(tl, SignalAmountRevised, Thresholds{RevisionRatio: 0.5})
+	if len(evs) != 1 || len(evs[0].Revisions) != 3 {
+		t.Fatalf("evidence = %+v", evs)
+	}
+	if r := evs[0].Revisions[0]; r.FY != 2024 || r.Old.Value != 1000 || r.New.Value != 0 || r.OldSheet != 2024 || r.NewSheet != 2025 {
+		t.Errorf("largest = %+v", r)
+	}
+	if r := evs[0].Revisions[2]; r.FY != 2023 || r.Item != "当初予算" || r.Old.Value != 0 || r.New.Value != 5 {
+		t.Errorf("from zero = %+v", r)
 	}
 }
 

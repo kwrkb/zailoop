@@ -16,6 +16,7 @@ export interface Thresholds {
   LargeUnusedRatio: number;
   OutcomeShortfall: number;
   OutcomeOvershoot: number;
+  RevisionRatio: number;
 }
 
 export interface Term {

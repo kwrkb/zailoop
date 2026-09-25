@@ -28,8 +28,22 @@ type YearRow struct {
 	CarriedOut    rs.Yen
 	Unused        rs.Yen
 	UnusedState   State
-	Source        int      // 値を取ったシートの事業年度
-	Revised       []string // 古いシートと違った項目の説明
+	Source        int        // 値を取ったシートの事業年度
+	Revised       []Revision // 古いシートと違った項目
+}
+
+// Revision は同じ予算年度の金額が、古いシートと値を取った新しいシートで違ったもの。
+type Revision struct {
+	FY       int
+	Item     string // 当初予算 / 歳出予算現額 / 執行額
+	OldSheet int    // 古いシートの事業年度
+	Old      rs.Yen
+	NewSheet int // 値を取ったシートの事業年度
+	New      rs.Yen
+}
+
+func (r Revision) String() string {
+	return fmt.Sprintf("FY%d %s: 事業年度%d シート %d → 事業年度%d シート %d", r.FY, r.Item, r.OldSheet, r.Old.Value, r.NewSheet, r.New.Value)
 }
 
 // LoopVerdict はシート S の「反映状況」と、翌年のシートで分かった FY S+1 当初予算の整合。
@@ -183,9 +197,9 @@ func trackYears(ss []*rs.Sheet, tl *Timeline) []YearRow {
 						if d.unless || !d.o.Valid || !d.n.Valid || d.o.Value == d.n.Value {
 							continue
 						}
-						msg := fmt.Sprintf("FY%d %s: 事業年度%d シート %d → 事業年度%d シート %d", fy, d.name, ss[i].FiscalYear, d.o.Value, newest.FiscalYear, d.n.Value)
-						row.Revised = append(row.Revised, msg)
-						tl.Notes = append(tl.Notes, msg)
+						r := Revision{FY: fy, Item: d.name, OldSheet: ss[i].FiscalYear, Old: d.o, NewSheet: newest.FiscalYear, New: d.n}
+						row.Revised = append(row.Revised, r)
+						tl.Notes = append(tl.Notes, r.String())
 					}
 				}
 			}
@@ -271,6 +285,7 @@ func SummarizeTimeline(tl *Timeline, th Thresholds) Summary {
 		sm.LoopVerdict = prev.Verdict
 		sm.Signals |= prev.Signals
 	}
+	sm.Signals |= DetectRevision(tl, th)
 	for _, n := range tl.Names {
 		if n.Name != tl.Latest.Project.Name {
 			sm.Renamed = true
