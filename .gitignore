@@ -6,3 +6,4 @@ web/node_modules/
 .wrangler/
 .claude/investigation-zero-budget.md
 .claude/zero-budget-research/
+/checks/
