@@ -17,10 +17,14 @@
   }
 }
 * { box-sizing:border-box; }
-body { margin:0 auto; padding:24px 20px 40px; max-width:1080px; font:16px/1.7 system-ui,-apple-system,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif; color:var(--fg); background:var(--bg); }
-a { color:var(--link); }
-h1 { font-size:1.7rem; line-height:1.35; margin:0.15em 0 0.3em; letter-spacing:0.01em; }
-h2 { font-size:1.15rem; margin:2.2em 0 0.7em; }
+/* 和文を先に置く。system-ui が先頭だと Linux などで欧文だけ別書体になり、数字と漢字の並びが揃わない。 */
+body { margin:0 auto; padding:24px 20px 40px; max-width:1080px; font:16px/1.75 "BIZ UDPGothic","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Noto Sans CJK JP","Yu Gothic UI","Meiryo",system-ui,sans-serif; color:var(--fg); background:var(--bg); -webkit-text-size-adjust:100%; }
+a { color:var(--link); text-underline-offset:0.2em; text-decoration-thickness:1px; }
+a:hover { text-decoration-thickness:2px; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
+h1, h2, h3 { font-feature-settings:"palt"; }
+h1 { font-size:1.75rem; line-height:1.35; margin:0.15em 0 0.3em; letter-spacing:0.02em; }
+h2 { font-size:1.2rem; margin:2.2em 0 0.7em; letter-spacing:0.02em; }
 h3 { font-size:1rem; margin:1.4em 0 0.4em; }
 h2 small, h3 small { font-weight:normal; color:var(--muted); font-size:0.8rem; margin-left:8px; }
 .muted, .sub { color:var(--muted); } .sub { font-size:0.9em; } .sub.block { display:block; }
@@ -79,13 +83,21 @@ table.obligations thead th, table.obligations td.num { white-space:nowrap; } tab
 .flow .sub { font-size:0.8rem; color:var(--muted); font-variant-numeric:tabular-nums; }
 .flow .judge a { background:var(--surface2); border-style:dashed; }
 .flow .judge .main { font-size:1.02rem; font-weight:600; }
+/* ⑥ の反映が翌年度の ① 要求に戻ることを、段の下の戻り線で示す（ループ） */
+.flow { position:relative; padding-bottom:4px; }
+.flow::after { content:""; grid-column:1 / -1; margin:-12px 8% 0; height:28px; border:2px dashed var(--accent-soft); border-top:none; border-radius:0 0 14px 14px; }
+.flow::before { content:"⑥ 反映 → 翌年度の ① 要求へ"; position:absolute; left:50%; bottom:-4px; transform:translateX(-50%); padding:0 10px; background:var(--bg); font-size:0.78rem; line-height:1.2; color:var(--muted); white-space:nowrap; }
 @media (max-width:979px) {
   .flow { grid-template-columns:repeat(3, minmax(0, 1fr)); }
   .flow .step:nth-child(3n)::after { content:none; }
 }
 @media (max-width:599px) {
-  .flow { grid-template-columns:1fr; gap:20px; }
-  .flow .step:not(:last-child)::after, .flow .step:nth-child(3n):not(:last-child)::after { content:"↓"; right:auto; left:24px; top:auto; bottom:-20px; transform:none; }
+  /* 2 列。順番は ①〜⑥ の番号で読めるので矢印は出さない */
+  .flow { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+  .flow .step:not(:last-child)::after, .flow .step:nth-child(3n):not(:last-child)::after { content:none; }
+  .flow a { padding:10px 12px; }
+  .flow .main { font-size:1.15rem; }
+  .flow::after { margin:-4px 4% 0; }
 }
 
 /* 詳細: お金の内訳（入口と出口を同じ尺度で） */
