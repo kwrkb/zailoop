@@ -149,7 +149,7 @@ func TestCSVQuotedBOMHeaderAndFullScan(t *testing.T) {
 		t.Fatal(err)
 	}
 	var values []string
-	err := dir.scan("1-2", "test", []string{"value"}, func(r *csvRow) error {
+	_, err := dir.scan("1-2", "test", []string{"value"}, func(r *csvRow) error {
 		values = append(values, r.text("value"))
 		return nil
 	})

@@ -132,7 +132,7 @@ func TestBuildMultiYear(t *testing.T) {
 		t.Errorf("projects = %d", st.Projects)
 	}
 	detail, _ := os.ReadFile(filepath.Join(out, "p", "884.html"))
-	for _, want := range []string{"年度をまたぐ推移", "ループ検証", "2024年度シート", "反映「縮減」", "2025年度シート", "判定: "} {
+	for _, want := range []string{"年度をまたぐ推移", "ループ検証", "2024年度シート", "反映「縮減」", "2025年度シート", "判定: ", "データ出典: 2024年度・2025年度の配布 CSV（表 1-2, 1-5, 2-1, 2-2, 3-1, 4-1, 5-1, 5-4）", "<code>2-1_RS_2025_"} {
 		if !strings.Contains(string(detail), want) {
 			t.Errorf("p/884.html missing %q", want)
 		}

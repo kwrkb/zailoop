@@ -205,6 +205,19 @@ type Related struct {
 	Kind string // 関連性（親事業/子事業/統合元/統合先/分割元/分割先/基金造成した基金シート …）
 }
 
+// SourceFile は Sheet を組み立てるために読んだ配布 CSV 1 つ。
+type SourceFile struct {
+	Table string // 表番号（"1-2", "2-1" …）
+	Name  string // ファイル名（ディレクトリを含まない）
+}
+
+// Source は 1 年度分の Sheet の元になった CSV 群。読んだ時点で記録し、表示側では推測しない。
+// ディレクトリのパスは持たない（手元の場所を出力に載せないため）。
+type Source struct {
+	Year  int          // 読んだ CSV の事業年度（Dir.Year）
+	Files []SourceFile // 読んだ順（表番号の順）
+}
+
 // Sheet は 1 年度分の CSV 群から組み立てた 1 事業のレビューシート。
 type Sheet struct {
 	FiscalYear  int // 事業年度（CSV の「事業年度」列）
@@ -216,6 +229,7 @@ type Sheet struct {
 	Evaluation  Evaluation
 	Blocks      []PayeeBlock // 5-1、CSV の出現順
 	Obligations []Obligation // 5-4、CSV の出現順
+	Source      Source       // 元になった CSV 群
 }
 
 // Budget は指定した予算年度の BudgetYear を返す。無ければ nil。

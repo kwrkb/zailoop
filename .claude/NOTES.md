@@ -32,6 +32,13 @@
 
 8 ファイル（1-2, 1-5, 2-1, 2-2, 3-1, 4-1, 5-1, 5-4）を `groupReader` で同時に開き、各ファイルの「同一 ID の連続行」を ID 昇順にマージして 1 事業ずつ `Sheet` を組み立てる。ID が昇順でなければ `ErrUnordered`。`LoadSheet` も同じ `builder`/`table` を使う。
 
+## データ出典（rs.Source）
+
+- `rs.Sheet.Source{Year, Files[]{Table, Name}}` は読んだ時点で記録する（`LoadSheet` は `scan` の戻り値、`Each` は `sheetIter.source` を Sheet ごとに複製）。ファイル名だけでディレクトリは持たない
+- `lifecycle.Lifecycle.Source`、`lifecycle.Timeline.Sources`（事業年度の昇順、手元にあるシートの分だけ）
+- 要約の文言は `render.SourceSummary`（CLI の出典表記の下と、詳細ページのフッター `<details class="data-source">` で共用）。`show --sources` は `render.SourceFiles`
+- `render.Timeline` は本文（`text`）→ 推移・ループ検証 → `footer`（出典表記・要約・注記）の順。出典表記は末尾に 1 回
+
 ## 関連事業（1-5）
 
 - `rs.Sheet.Related` → `lifecycle.Lifecycle.Related`。`Parents()` は関連性が「親事業」のもの、`AllZero` は全予算年度の金額がすべて 0

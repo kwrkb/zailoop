@@ -192,3 +192,18 @@ func TestTrackPastParents(t *testing.T) {
 		t.Errorf("single sheet PastParents = %+v", tl.PastParents)
 	}
 }
+
+func TestTrackSources(t *testing.T) {
+	src := func(y int) rs.Source {
+		return rs.Source{Year: y, Files: []rs.SourceFile{{Table: "1-2", Name: "1-2_RS_" + string(rune('0'+y%10)) + ".csv"}}}
+	}
+	s24 := &rs.Sheet{FiscalYear: 2024, Project: rs.Project{ID: "1"}, Source: src(2024)}
+	s25 := &rs.Sheet{FiscalYear: 2025, Project: rs.Project{ID: "1"}, Source: src(2025)}
+	tl := Track([]*rs.Sheet{s25, s24}, Thresholds{})
+	if len(tl.Sources) != 2 || tl.Sources[0].Year != 2024 || tl.Sources[1].Year != 2025 {
+		t.Errorf("Sources = %+v, want 2024, 2025", tl.Sources)
+	}
+	if tl.Latest.Source.Year != 2025 || tl.Latest.Source.Files[0].Name != s25.Source.Files[0].Name {
+		t.Errorf("Latest.Source = %+v", tl.Latest.Source)
+	}
+}

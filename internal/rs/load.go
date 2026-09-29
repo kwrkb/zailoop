@@ -20,11 +20,14 @@ type Dir struct {
 // ID が存在しない場合は errors.Is(err, ErrNotFound) が true になる。
 func (d Dir) LoadSheet(id string) (*Sheet, error) {
 	sheet := new(Sheet)
+	sheet.Source.Year = d.Year
 	for _, t := range tables() {
 		b := t.start(id, sheet)
-		if err := d.scan(t.number, id, t.columns, b.row); err != nil {
+		name, err := d.scan(t.number, id, t.columns, b.row)
+		if err != nil {
 			return nil, err
 		}
+		sheet.Source.Files = append(sheet.Source.Files, SourceFile{Table: t.number, Name: name})
 		if err := b.finish(); err != nil {
 			return nil, err
 		}

@@ -11,10 +11,8 @@ import (
 // Timeline は複数年度シートを束ねた Timeline を書き出す。
 // 最新シートの 6 段階（Text）に続けて、「年度をまたぐ推移」と「ループ検証」を出す。
 func Timeline(w io.Writer, tl *lifecycle.Timeline) error {
-	if err := Text(w, tl.Latest); err != nil {
-		return err
-	}
 	p := &printer{w: w}
+	text(p, tl.Latest)
 	p.f("")
 	p.f("==== 年度をまたぐ推移  シート: %s（重なる年度は新しいシートの値）", intsList(tl.SheetYears))
 	if len(tl.Names) > 1 {
@@ -73,6 +71,7 @@ func Timeline(w io.Writer, tl *lifecycle.Timeline) error {
 			p.f("  - %s", n)
 		}
 	}
+	footer(p, tl.Sources)
 	return p.err
 }
 

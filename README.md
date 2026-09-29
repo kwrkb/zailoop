@@ -21,10 +21,11 @@ go build ./cmd/zailoop
 ./zailoop build --out site           # 全事業の静的サイトを生成（index.html / list.html / p/<ID>.html）
 ./zailoop fetch --year 2025
 ./zailoop show 884 --years 2024,2025 # 2 年度を結合し、推移とループ検証（評価・反映 → 翌年の成立）を表示
+./zailoop show 884 --sources         # 元にした CSV のファイル名も一覧する
 ./zailoop build --years 2024,2025 --out site
 ```
 
-`site/index.html` はブラウザで直接開けます（file:// 可）。一覧・「ループの断絶」・成果指標・「ループ検証」（複数年度のとき）の 4 ビューがあり、各事業の詳細ページ（JS なし）に飛べます。詳細ページにはシートの関連事業（親事業・子事業・統合・分割など）へのリンクと、金額がすべて 0 の事業ではシートの特記事項・増減理由の原文を出します。断絶判定の閾値は `build` の引数（`--gap-ratio`, `--min-exec-rate`, `--min-unused`, `--unused-ratio`, `--outcome-low`, `--outcome-high`, 複数年度の `--revision-ratio`）で変えられます。
+`site/index.html` はブラウザで直接開けます（file:// 可）。一覧・「ループの断絶」・成果指標・「ループ検証」（複数年度のとき）の 4 ビューがあり、各事業の詳細ページ（JS なし）に飛べます。詳細ページにはシートの関連事業（親事業・子事業・統合・分割など）へのリンクと、金額がすべて 0 の事業ではシートの特記事項・増減理由の原文を出します。フッターの「データ出典」には、その事業を組み立てた年度と CSV の表番号を出し、展開するとファイル名が見られます（`show` も同じ内容を出典表記の下に 1 行出し、`--sources` でファイル名を一覧します）。断絶判定の閾値は `build` の引数（`--gap-ratio`, `--min-exec-rate`, `--min-unused`, `--unused-ratio`, `--outcome-low`, `--outcome-high`, 複数年度の `--revision-ratio`）で変えられます。
 
 ## フロント（web/）の開発
 

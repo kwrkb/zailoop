@@ -1,7 +1,7 @@
 // zailoop は行政事業レビュー見える化サイトの CSV から、1 事業の予算ライフサイクルを表示する。
 //
 //	zailoop fetch [--year 2024] [--data data]
-//	zailoop show <予算事業ID> [--year 2024] [--data data]
+//	zailoop show <予算事業ID> [--year 2024] [--data data] [--sources]
 //	zailoop version
 package main
 
@@ -30,9 +30,10 @@ const usage = `zailoop: 予算事業のライフサイクル（要求→成立�
 
 使い方:
   zailoop fetch [--year 2024] [--data data]      配布 ZIP を取得して展開する（既存はスキップ）
-  zailoop show <予算事業ID> [--year 2024 | --years 2024,2025] [--data data]
+  zailoop show <予算事業ID> [--year 2024 | --years 2024,2025] [--data data] [--sources]
                                                   1 事業のライフサイクルを表示する
                                                   --years で複数年度を結合し、推移とループ検証を加える
+                                                  --sources で元にした CSV のファイル名も一覧する
   zailoop build [--out site] [--year 2024 | --years 2024,2025] [--data data] [閾値オプション]
                                                   全事業の静的サイトを生成する
   zailoop version                                 バージョンを表示する
@@ -207,6 +208,7 @@ func runShow(args []string) error {
 	fs := flag.NewFlagSet("show", flag.ContinueOnError)
 	year, data := commonFlags(fs)
 	years := yearsFlag(fs)
+	sources := fs.Bool("sources", false, "元データの CSV ファイル名を一覧する")
 	pos, err := parseInterspersed(fs, args)
 	if errors.Is(err, flag.ErrHelp) {
 		return nil
@@ -236,10 +238,24 @@ func runShow(args []string) error {
 	if len(sheets) == 0 {
 		return fmt.Errorf("予算事業ID %s は %v 年度のデータにありません", id, ys)
 	}
+	var srcs []rs.Source
 	if len(ys) == 1 {
-		return render.Text(os.Stdout, lifecycle.Build(sheets[0], lifecycle.Options{}))
+		lc := lifecycle.Build(sheets[0], lifecycle.Options{})
+		if err := render.Text(os.Stdout, lc); err != nil {
+			return err
+		}
+		srcs = []rs.Source{lc.Source}
+	} else {
+		tl := lifecycle.Track(sheets, lifecycle.Thresholds{})
+		if err := render.Timeline(os.Stdout, tl); err != nil {
+			return err
+		}
+		srcs = tl.Sources
 	}
-	return render.Timeline(os.Stdout, lifecycle.Track(sheets, lifecycle.Thresholds{}))
+	if *sources {
+		return render.SourceFiles(os.Stdout, srcs)
+	}
+	return nil
 }
 
 func runBuild(args []string) error {
