@@ -36,8 +36,8 @@
 
 - `rs.Sheet.Source{Year, Files[]{Table, Name}}` は読んだ時点で記録する（`LoadSheet` は `scan` の戻り値、`Each` は `sheetIter.source` を Sheet ごとに複製）。ファイル名だけでディレクトリは持たない
 - `lifecycle.Lifecycle.Source`、`lifecycle.Timeline.Sources`（事業年度の昇順、手元にあるシートの分だけ）
-- 要約の文言は `render.SourceSummary`（CLI の出典表記の下と、詳細ページのフッター `<details class="data-source">` で共用）。`show --sources` は `render.SourceFiles`
-- `render.Timeline` は本文（`text`）→ 推移・ループ検証 → `footer`（出典表記・要約・注記）の順。出典表記は末尾に 1 回
+- 要約の文言は `render.SourceSummary`（CLI の出典表記の下と、詳細ページのフッター `<details class="data-source">` で共用）。`show --sources` は `render.Options.SourceFiles` で要約の下にファイル名を並べる
+- `render.Timeline` は本文（`text`）→ 推移・ループ検証 → `footer`（出典表記・要約・ファイル名・注記）の順。出典表記は末尾に 1 回
 
 ## 関連事業（1-5）
 

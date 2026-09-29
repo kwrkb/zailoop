@@ -48,37 +48,37 @@ func SourceSummary(sources []rs.Source) string {
 	return fmt.Sprintf("%sの配布 CSV（表 %s）", strings.Join(years, "・"), strings.Join(tables, ", "))
 }
 
-// SourceFiles は元になった CSV のファイル名を年度ごとに書き出す（show --sources 用）。
-func SourceFiles(w io.Writer, sources []rs.Source) error {
-	p := &printer{w: w}
-	p.f("")
-	p.f("==== 元データの CSV")
-	for _, s := range sources {
-		if len(s.Files) == 0 {
-			continue
-		}
-		p.f("  %d年度", s.Year)
-		for _, f := range s.Files {
-			p.f("    %-4s %s", f.Table, f.Name)
-		}
-	}
-	return p.err
+// Options は Text・Timeline の表示の設定。
+type Options struct {
+	SourceFiles bool // 元データの要約の下に、年度ごとの CSV ファイル名を並べる（show --sources）
 }
 
-func footer(p *printer, sources []rs.Source) {
+// footer は出典表記 → 元データの要約（と CSV ファイル名）→ 注記の順に書く。
+func footer(p *printer, sources []rs.Source, opt Options) {
 	p.f("")
 	p.f("%s", Attribution)
 	if s := SourceSummary(sources); s != "" {
 		p.f("元データ: %s", s)
+		if opt.SourceFiles {
+			for _, src := range sources {
+				if len(src.Files) == 0 {
+					continue
+				}
+				p.f("  %d年度", src.Year)
+				for _, f := range src.Files {
+					p.f("    %-4s %s", f.Table, f.Name)
+				}
+			}
+		}
 	}
 	p.f("%s", Disclaimer)
 }
 
 // Text は 1 事業のライフサイクルをテキストで書き出す。
-func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
+func Text(w io.Writer, lc *lifecycle.Lifecycle, opt Options) error {
 	p := &printer{w: w}
 	text(p, lc)
-	footer(p, []rs.Source{lc.Source})
+	footer(p, []rs.Source{lc.Source}, opt)
 	return p.err
 }
 
