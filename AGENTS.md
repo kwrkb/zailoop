@@ -24,5 +24,6 @@ VISION.md はルート、PLAN.md・NOTES.md・LESSONS.md・引き継ぎ書は `.
 ## 表記
 
 - 出力には出典 `render.Attribution`（「行政事業レビュー見える化サイトのデータを加工して作成」＋加工の主体・データの URL・PDL1.0）と注記 `render.Disclaimer`（非公式・独自の判定）を必ず含める。HTML は `templates/partials.html` の `credit` を使う
+- 事業ごとのデータ出典（年度・CSV）は読み込み時の `rs.Sheet.Source` を使い、表示側でファイル名を組み立てない。要約の文言は `render.SourceSummary` で CLI と HTML に共通
 - 兆候・ループ検証を公式の評価のように見せない（見える化サイトの規約: 加工した情報を国が作成したかのような態様で公表しない）
 - 「RSシステム」「行政事業レビュー」を製品名のように使わない
