@@ -22,7 +22,7 @@ func TestTimelineOutput(t *testing.T) {
 	s24.Source, s25.Source = testSource(2024, "1-2"), testSource(2025, "1-2")
 	tl := lifecycle.Track([]*rs.Sheet{s24, s25}, lifecycle.Thresholds{})
 	var buf bytes.Buffer
-	if err := Timeline(&buf, tl); err != nil {
+	if err := Timeline(&buf, tl, Options{}); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()
@@ -34,5 +34,14 @@ func TestTimelineOutput(t *testing.T) {
 	// 出典は最新シートの本文の後ではなく、推移・ループ検証の後に 1 回だけ出す
 	if strings.Count(out, Attribution) != 1 || strings.Index(out, Attribution) < strings.Index(out, "ループ検証") {
 		t.Errorf("attribution should appear once at the end:\n%s", out)
+	}
+
+	buf.Reset()
+	if err := Timeline(&buf, tl, Options{SourceFiles: true}); err != nil {
+		t.Fatal(err)
+	}
+	want := "元データ: 2024年度・2025年度の配布 CSV（表 1-2）\n  2024年度\n    1-2  1-2_RS_2024_x.csv\n  2025年度\n    1-2  1-2_RS_2025_x.csv\n" + Disclaimer + "\n"
+	if !strings.HasSuffix(buf.String(), want) {
+		t.Errorf("source files should come between the summary and the disclaimer:\n%s", buf.String())
 	}
 }

@@ -29,7 +29,7 @@ func TestTextContainsStagesAndAttribution(t *testing.T) {
 		Evaluation: rs.Evaluation{TeamOpinion: "事業内容の一部改善", Reflection: "縮減", ReflectedGeneral: y(-569000)},
 	}
 	var buf bytes.Buffer
-	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{})); err != nil {
+	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{}), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()
@@ -77,7 +77,7 @@ func TestTextAllZeroRemarksAndObligations(t *testing.T) {
 		Obligations: []rs.Obligation{{Block: "A", Payee: "契約先", Summary: "契約1", Amount: rs.Yen{Value: 5000, Valid: true}, Method: "一般競争入札"}},
 	}
 	var buf bytes.Buffer
-	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{})); err != nil {
+	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{}), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()
@@ -93,7 +93,7 @@ func TestTextAllZeroRemarksAndObligations(t *testing.T) {
 
 	s.Project.Remarks, s.Obligations = "", nil
 	buf.Reset()
-	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{})); err != nil {
+	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{}), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(buf.String(), "「その他特記事項」「主な増減理由」「備考」に記載はありません") {
@@ -122,7 +122,7 @@ func TestSourceSummary(t *testing.T) {
 func TestTextSources(t *testing.T) {
 	s := &rs.Sheet{FiscalYear: 2024, Project: rs.Project{ID: "1", Name: "x"}, Source: testSource(2024, "1-2", "2-1")}
 	var buf bytes.Buffer
-	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{})); err != nil {
+	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{}), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()
@@ -131,12 +131,12 @@ func TestTextSources(t *testing.T) {
 		t.Errorf("footer missing %q in:\n%s", want, out)
 	}
 	if strings.Contains(out, "_RS_2024_x.csv") {
-		t.Errorf("file names should appear only with SourceFiles")
+		t.Errorf("file names should appear only with Options.SourceFiles")
 	}
 
 	buf.Reset()
 	s.Source = rs.Source{}
-	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{})); err != nil {
+	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{}), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(buf.String(), "元データ:") {
@@ -144,15 +144,15 @@ func TestTextSources(t *testing.T) {
 	}
 }
 
-func TestSourceFiles(t *testing.T) {
+func TestTextSourceFiles(t *testing.T) {
+	s := &rs.Sheet{FiscalYear: 2024, Project: rs.Project{ID: "1", Name: "x"}, Source: testSource(2024, "1-2", "2-1")}
 	var buf bytes.Buffer
-	if err := SourceFiles(&buf, []rs.Source{testSource(2024, "1-2"), testSource(2025, "1-2")}); err != nil {
+	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{}), Options{SourceFiles: true}); err != nil {
 		t.Fatal(err)
 	}
-	out := buf.String()
-	for _, want := range []string{"元データの CSV", "  2024年度\n    1-2  1-2_RS_2024_x.csv", "  2025年度\n    1-2  1-2_RS_2025_x.csv"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("missing %q in:\n%s", want, out)
-		}
+	// 元データの要約 → ファイル名 → 注記の順で、注記が最後
+	want := Attribution + "\n元データ: 2024年度の配布 CSV（表 1-2, 2-1）\n  2024年度\n    1-2  1-2_RS_2024_x.csv\n    2-1  2-1_RS_2024_x.csv\n" + Disclaimer + "\n"
+	if out := buf.String(); !strings.HasSuffix(out, want) {
+		t.Errorf("footer missing %q in:\n%s", want, out)
 	}
 }

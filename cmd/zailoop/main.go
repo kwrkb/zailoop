@@ -208,7 +208,7 @@ func runShow(args []string) error {
 	fs := flag.NewFlagSet("show", flag.ContinueOnError)
 	year, data := commonFlags(fs)
 	years := yearsFlag(fs)
-	sources := fs.Bool("sources", false, "元データの CSV ファイル名を一覧する")
+	sources := fs.Bool("sources", false, "元データの要約の下に CSV ファイル名を一覧する")
 	pos, err := parseInterspersed(fs, args)
 	if errors.Is(err, flag.ErrHelp) {
 		return nil
@@ -238,24 +238,11 @@ func runShow(args []string) error {
 	if len(sheets) == 0 {
 		return fmt.Errorf("予算事業ID %s は %v 年度のデータにありません", id, ys)
 	}
-	var srcs []rs.Source
+	opt := render.Options{SourceFiles: *sources}
 	if len(ys) == 1 {
-		lc := lifecycle.Build(sheets[0], lifecycle.Options{})
-		if err := render.Text(os.Stdout, lc); err != nil {
-			return err
-		}
-		srcs = []rs.Source{lc.Source}
-	} else {
-		tl := lifecycle.Track(sheets, lifecycle.Thresholds{})
-		if err := render.Timeline(os.Stdout, tl); err != nil {
-			return err
-		}
-		srcs = tl.Sources
+		return render.Text(os.Stdout, lifecycle.Build(sheets[0], lifecycle.Options{}), opt)
 	}
-	if *sources {
-		return render.SourceFiles(os.Stdout, srcs)
-	}
-	return nil
+	return render.Timeline(os.Stdout, lifecycle.Track(sheets, lifecycle.Thresholds{}), opt)
 }
 
 func runBuild(args []string) error {
