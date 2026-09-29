@@ -229,8 +229,8 @@
 
 <footer>
   {{template "credit"}}
-  {{with .TL.Sources}}<details class="data-source"><summary>データ出典: {{sourceSummary .}}</summary>
-    {{range .}}<p class="muted">{{.Year}}年度</p><ul>{{range .Files}}<li>{{.Table}} <code>{{.Name}}</code></li>{{end}}</ul>{{end}}
+  {{with sourceSummary .TL.Sources}}<details class="data-source"><summary>データ出典: {{.}}</summary>
+    {{range $.TL.Sources}}{{if .Files}}<p class="muted">{{.Year}}年度</p><ul>{{range .Files}}<li>{{.Table}} <code>{{.Name}}</code></li>{{end}}</ul>{{end}}{{end}}
   </details>{{end}}
   <p class="muted">生成: {{.Generated}} ／ 数値は円。「FY」は予算年度。</p>
 </footer>

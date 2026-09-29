@@ -126,13 +126,35 @@ func TestDetailDataSource(t *testing.T) {
 		}
 	}
 
-	tl := lifecycle.Track([]*rs.Sheet{{FiscalYear: 2024, Project: rs.Project{ID: "1"}}}, lifecycle.Thresholds{})
-	tl.Sources = nil
+	// Sheet.Source を埋めない Source から来たシート: Track はゼロ値の Source を積むが、節は出さない。
+	bare := &rs.Sheet{FiscalYear: 2023, Project: rs.Project{ID: "1", Name: "x"}}
+	for _, clear := range []bool{false, true} {
+		tl := lifecycle.Track([]*rs.Sheet{bare}, lifecycle.Thresholds{})
+		if clear {
+			tl.Sources = nil
+		}
+		var buf bytes.Buffer
+		if err := writeDetail(&buf, tl, lifecycle.SummarizeTimeline(tl, lifecycle.Thresholds{}), lifecycle.Thresholds{}, nil, "now"); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(buf.String(), "データ出典") {
+			t.Errorf("detail without source files should not have the data-source section (Sources=%v)", tl.Sources)
+		}
+	}
+
+	// 記録のあるシートと無いシートが混ざるときは、記録のある年度だけを並べる。
+	tl := lifecycle.Track([]*rs.Sheet{bare, s24}, lifecycle.Thresholds{})
 	var buf bytes.Buffer
 	if err := writeDetail(&buf, tl, lifecycle.SummarizeTimeline(tl, lifecycle.Thresholds{}), lifecycle.Thresholds{}, nil, "now"); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(buf.String(), "データ出典") {
-		t.Errorf("detail without sources should not have the data-source section")
+	out := buf.String()
+	if !strings.Contains(out, "<summary>データ出典: 2024年度の配布 CSV（表 1-2）</summary>") {
+		t.Errorf("mixed sheets: missing summary for the recorded year")
+	}
+	for _, bad := range []string{">0年度<", ">2023年度<"} {
+		if strings.Contains(out, bad) {
+			t.Errorf("mixed sheets: unexpected %q in data-source section", bad)
+		}
 	}
 }
