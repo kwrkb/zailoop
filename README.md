@@ -21,6 +21,7 @@ go build ./cmd/zailoop
 ./zailoop build --out site           # 全事業の静的サイトを生成（index.html / list.html / p/<ID>.html）
 ./zailoop fetch --year 2025
 ./zailoop show 884 --years 2024,2025 # 2 年度を結合し、推移とループ検証（評価・反映 → 翌年の成立）を表示
+./zailoop show 884 --sources         # 元にした CSV のファイル名も一覧する
 ./zailoop build --years 2024,2025 --out site
 ```
 

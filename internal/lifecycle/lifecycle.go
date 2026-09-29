@@ -150,8 +150,9 @@ type PayeeSummary struct {
 // Lifecycle は 1 事業の 6 段階。
 type Lifecycle struct {
 	Project    rs.Project
-	SheetYear  int // 事業年度 S
-	ActualYear int // 執行が確定した最新の予算年度 N
+	SheetYear  int       // 事業年度 S
+	ActualYear int       // 執行が確定した最新の予算年度 N
+	Source     rs.Source // 元になった CSV 群
 
 	Request    Request
 	Enacted    Enacted
@@ -205,7 +206,7 @@ func Build(s *rs.Sheet, opt Options) *Lifecycle {
 	if top == 0 {
 		top = 3
 	}
-	lc := &Lifecycle{Project: s.Project, SheetYear: s.FiscalYear, ActualYear: n}
+	lc := &Lifecycle{Project: s.Project, SheetYear: s.FiscalYear, ActualYear: n, Source: s.Source}
 	for _, b := range s.Budgets {
 		lc.BudgetYears = append(lc.BudgetYears, b.Year)
 		lc.Years = append(lc.Years, YearLine{Year: b.Year, Initial: b.Total.Initial, Current: b.Total.Current, Executed: b.Total.Executed, HasTotal: b.HasTotal})

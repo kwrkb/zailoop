@@ -25,9 +25,64 @@ const Disclaimer = "zailoop は非公式のツールで、国や府省庁が作�
 // Repo はソースコードの置き場所。サイトのフッターと CLI の使い方に出す。
 const Repo = "https://github.com/kwrkb/zailoop"
 
+// SourceSummary は元になった CSV 群の 1 行要約。CLI と HTML で同じ文言を使う。
+// 例: 「2024年度・2025年度の配布 CSV（表 1-2, 1-5, 2-1）」。ファイルの記録が無ければ空文字列。
+func SourceSummary(sources []rs.Source) string {
+	var years, tables []string
+	seen := map[string]bool{}
+	for _, s := range sources {
+		if len(s.Files) == 0 {
+			continue
+		}
+		years = append(years, fmt.Sprintf("%d年度", s.Year))
+		for _, f := range s.Files {
+			if !seen[f.Table] {
+				seen[f.Table] = true
+				tables = append(tables, f.Table)
+			}
+		}
+	}
+	if len(years) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%sの配布 CSV（表 %s）", strings.Join(years, "・"), strings.Join(tables, ", "))
+}
+
+// SourceFiles は元になった CSV のファイル名を年度ごとに書き出す（show --sources 用）。
+func SourceFiles(w io.Writer, sources []rs.Source) error {
+	p := &printer{w: w}
+	p.f("")
+	p.f("==== 元データの CSV")
+	for _, s := range sources {
+		if len(s.Files) == 0 {
+			continue
+		}
+		p.f("  %d年度", s.Year)
+		for _, f := range s.Files {
+			p.f("    %-4s %s", f.Table, f.Name)
+		}
+	}
+	return p.err
+}
+
+func footer(p *printer, sources []rs.Source) {
+	p.f("")
+	p.f("%s", Attribution)
+	if s := SourceSummary(sources); s != "" {
+		p.f("元データ: %s", s)
+	}
+	p.f("%s", Disclaimer)
+}
+
 // Text は 1 事業のライフサイクルをテキストで書き出す。
 func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 	p := &printer{w: w}
+	text(p, lc)
+	footer(p, []rs.Source{lc.Source})
+	return p.err
+}
+
+func text(p *printer, lc *lifecycle.Lifecycle) {
 	pr := lc.Project
 	p.f("%s  %s", pr.ID, pr.Name)
 	p.f("%s", strings.TrimSpace(strings.Join(nonEmpty(pr.Ministry, pr.Bureau, pr.Division), " / ")))
@@ -208,10 +263,6 @@ func Text(w io.Writer, lc *lifecycle.Lifecycle) error {
 			p.f("  - %s", nt)
 		}
 	}
-	p.f("")
-	p.f("%s", Attribution)
-	p.f("%s", Disclaimer)
-	return p.err
 }
 
 type printer struct {

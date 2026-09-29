@@ -19,15 +19,20 @@ func TestTimelineOutput(t *testing.T) {
 		{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(110), Current: y(110), Executed: y(70), ExecRate: rs.Ratio{Value: 0.636, Valid: true}}},
 		{Year: 2025, HasTotal: true, Total: rs.BudgetTotal{Initial: y(130)}},
 	}}
+	s24.Source, s25.Source = testSource(2024, "1-2"), testSource(2025, "1-2")
 	tl := lifecycle.Track([]*rs.Sheet{s24, s25}, lifecycle.Thresholds{})
 	var buf bytes.Buffer
 	if err := Timeline(&buf, tl); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()
-	for _, want := range []string{"年度をまたぐ推移", "旧名", "新名", "2023 ", "2025 ", "ループ検証", "2024年度シート", "反映「縮減」", "反映額 -5 円", "判定: 反映要確認（「縮減」だったのに翌年度の当初予算が増えています。事業の再編・移管などの可能性もあります）", "翌年のシートがないため未検証", Attribution} {
+	for _, want := range []string{"年度をまたぐ推移", "旧名", "新名", "2023 ", "2025 ", "ループ検証", "2024年度シート", "反映「縮減」", "反映額 -5 円", "判定: 反映要確認（「縮減」だったのに翌年度の当初予算が増えています。事業の再編・移管などの可能性もあります）", "翌年のシートがないため未検証", Attribution, "元データ: 2024年度・2025年度の配布 CSV（表 1-2）"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in:\n%s", want, out)
 		}
+	}
+	// 出典は最新シートの本文の後ではなく、推移・ループ検証の後に 1 回だけ出す
+	if strings.Count(out, Attribution) != 1 || strings.Index(out, Attribution) < strings.Index(out, "ループ検証") {
+		t.Errorf("attribution should appear once at the end:\n%s", out)
 	}
 }

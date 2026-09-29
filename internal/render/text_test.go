@@ -2,6 +2,7 @@ package render
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -97,5 +98,61 @@ func TestTextAllZeroRemarksAndObligations(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "「その他特記事項」「主な増減理由」「備考」に記載はありません") {
 		t.Errorf("missing no-notes message:\n%s", buf.String())
+	}
+}
+
+func testSource(year int, tables ...string) rs.Source {
+	s := rs.Source{Year: year}
+	for _, tb := range tables {
+		s.Files = append(s.Files, rs.SourceFile{Table: tb, Name: tb + "_RS_" + strconv.Itoa(year) + "_x.csv"})
+	}
+	return s
+}
+
+func TestSourceSummary(t *testing.T) {
+	if got := SourceSummary(nil); got != "" {
+		t.Errorf("SourceSummary(nil) = %q", got)
+	}
+	got := SourceSummary([]rs.Source{testSource(2024, "1-2", "2-1"), testSource(2025, "1-2", "2-1", "5-4")})
+	if want := "2024年度・2025年度の配布 CSV（表 1-2, 2-1, 5-4）"; got != want {
+		t.Errorf("SourceSummary = %q, want %q", got, want)
+	}
+}
+
+func TestTextSources(t *testing.T) {
+	s := &rs.Sheet{FiscalYear: 2024, Project: rs.Project{ID: "1", Name: "x"}, Source: testSource(2024, "1-2", "2-1")}
+	var buf bytes.Buffer
+	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{})); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	want := Attribution + "\n元データ: 2024年度の配布 CSV（表 1-2, 2-1）\n" + Disclaimer + "\n"
+	if !strings.HasSuffix(out, want) {
+		t.Errorf("footer missing %q in:\n%s", want, out)
+	}
+	if strings.Contains(out, "_RS_2024_x.csv") {
+		t.Errorf("file names should appear only with SourceFiles")
+	}
+
+	buf.Reset()
+	s.Source = rs.Source{}
+	if err := Text(&buf, lifecycle.Build(s, lifecycle.Options{})); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "元データ:") {
+		t.Errorf("sheet without Source should not print the summary")
+	}
+}
+
+func TestSourceFiles(t *testing.T) {
+	var buf bytes.Buffer
+	if err := SourceFiles(&buf, []rs.Source{testSource(2024, "1-2"), testSource(2025, "1-2")}); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	for _, want := range []string{"元データの CSV", "  2024年度\n    1-2  1-2_RS_2024_x.csv", "  2025年度\n    1-2  1-2_RS_2025_x.csv"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
 	}
 }

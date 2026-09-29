@@ -2,6 +2,7 @@ package site
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -97,5 +98,41 @@ func TestDetailObligationsCollapseOverTen(t *testing.T) {
 		if got := strings.Contains(buf.String(), "件を表示</summary>"); got != collapsed {
 			t.Errorf("%d contracts: collapsed = %v, want %v", n, got, collapsed)
 		}
+	}
+}
+
+func TestDetailDataSource(t *testing.T) {
+	src := func(y int) rs.Source {
+		return rs.Source{Year: y, Files: []rs.SourceFile{{Table: "1-2", Name: fmt.Sprintf("1-2_RS_%d_事業概要等.csv", y)}}}
+	}
+	s24 := &rs.Sheet{FiscalYear: 2024, Project: rs.Project{ID: "1", Name: "x"}, Source: src(2024)}
+	s25 := &rs.Sheet{FiscalYear: 2025, Project: rs.Project{ID: "1", Name: "x"}, Source: src(2025)}
+	for _, c := range []struct {
+		sheets []*rs.Sheet
+		want   []string
+	}{
+		{[]*rs.Sheet{s24}, []string{"<summary>データ出典: 2024年度の配布 CSV（表 1-2）</summary>", "<code>1-2_RS_2024_事業概要等.csv</code>"}},
+		{[]*rs.Sheet{s24, s25}, []string{"<summary>データ出典: 2024年度・2025年度の配布 CSV（表 1-2）</summary>", "<code>1-2_RS_2024_事業概要等.csv</code>", "<code>1-2_RS_2025_事業概要等.csv</code>"}},
+	} {
+		tl := lifecycle.Track(c.sheets, lifecycle.Thresholds{})
+		var buf bytes.Buffer
+		if err := writeDetail(&buf, tl, lifecycle.SummarizeTimeline(tl, lifecycle.Thresholds{}), lifecycle.Thresholds{}, nil, "now"); err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range c.want {
+			if !strings.Contains(buf.String(), want) {
+				t.Errorf("%d sheets: missing %q", len(c.sheets), want)
+			}
+		}
+	}
+
+	tl := lifecycle.Track([]*rs.Sheet{{FiscalYear: 2024, Project: rs.Project{ID: "1"}}}, lifecycle.Thresholds{})
+	tl.Sources = nil
+	var buf bytes.Buffer
+	if err := writeDetail(&buf, tl, lifecycle.SummarizeTimeline(tl, lifecycle.Thresholds{}), lifecycle.Thresholds{}, nil, "now"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "データ出典") {
+		t.Errorf("detail without sources should not have the data-source section")
 	}
 }

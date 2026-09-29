@@ -50,6 +50,7 @@ var funcs = template.FuncMap{
 	"termID":            termID,
 	"disclaimer":        func() string { return render.Disclaimer },
 	"repo":              func() string { return render.Repo },
+	"sourceSummary":     render.SourceSummary,
 	"contradictionNote": render.ContradictionNote,
 	"isAttn":            func(v lifecycle.LoopVerdict) bool { return v == lifecycle.VerdictContradiction },
 	"inc":               func(n int) int { return n + 1 },

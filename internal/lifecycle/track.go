@@ -88,10 +88,11 @@ type Loop struct {
 type Timeline struct {
 	ID         string
 	Names      []NameAt
-	SheetYears []int      // 手元にあるシートの事業年度（昇順）
-	Latest     *Lifecycle // 最新シートの Lifecycle
-	Years      []YearRow  // 予算年度の昇順
-	Loops      []Loop     // シートごと（昇順）
+	SheetYears []int       // 手元にあるシートの事業年度（昇順）
+	Latest     *Lifecycle  // 最新シートの Lifecycle
+	Sources    []rs.Source // シートごとの元 CSV 群（事業年度の昇順）
+	Years      []YearRow   // 予算年度の昇順
+	Loops      []Loop      // シートごと（昇順）
 	Notes      []string
 	// PastParents は古いシートの 1-5 に親事業として記載があり、最新シートには同じ親事業の記載がないもの。
 	PastParents []SheetRelated
@@ -116,6 +117,7 @@ func Track(sheets []*rs.Sheet, th Thresholds) *Timeline {
 	for i, s := range ss {
 		lcs[i] = Build(s, Options{})
 		tl.SheetYears = append(tl.SheetYears, s.FiscalYear)
+		tl.Sources = append(tl.Sources, s.Source)
 		if len(tl.Names) == 0 || tl.Names[len(tl.Names)-1].Name != s.Project.Name {
 			tl.Names = append(tl.Names, NameAt{SheetYear: s.FiscalYear, Name: s.Project.Name})
 		}

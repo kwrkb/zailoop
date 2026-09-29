@@ -139,20 +139,22 @@ func (d Dir) openCSV(number string, required []string) (*csvFile, error) {
 
 // scan validates the schema before visiting only the requested project's rows.
 // It reads to EOF, including records after the last matching ID.
-func (d Dir) scan(number, id string, required []string, visit func(*csvRow) error) error {
+// 読んだ CSV のファイル名（ディレクトリを含まない）を返す。
+func (d Dir) scan(number, id string, required []string, visit func(*csvRow) error) (string, error) {
 	file, err := d.openCSV(number, required)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer file.Close()
+	name := filepath.Base(file.path)
 	path, reader, columns := file.path, file.reader, file.columns
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
-			return nil
+			return name, nil
 		}
 		if err != nil {
-			return fmt.Errorf("%s: CSV 読み取り: %w", path, err)
+			return "", fmt.Errorf("%s: CSV 読み取り: %w", path, err)
 		}
 		if strings.TrimSpace(record[columns["予算事業ID"]]) != id {
 			continue
@@ -164,7 +166,7 @@ func (d Dir) scan(number, id string, required []string, visit func(*csvRow) erro
 		}
 		if err != nil {
 			line, _ := reader.FieldPos(0)
-			return fmt.Errorf("%s:%d: 予算事業ID %s: %w", path, line, id, err)
+			return "", fmt.Errorf("%s:%d: 予算事業ID %s: %w", path, line, id, err)
 		}
 	}
 }

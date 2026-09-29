@@ -501,7 +501,21 @@ func TestLoadSheetRealData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(sheet, fixture) {
+	// testdata はファイル名から「・」「、」を抜いてあるので、出典のファイル名だけは一致しない。
+	// 中身は Source を除いて比べ、Source は年度と表番号の並びが同じことを確かめる。
+	tables := func(s Source) []string {
+		var out []string
+		for _, f := range s.Files {
+			out = append(out, f.Table)
+		}
+		return out
+	}
+	if sheet.Source.Year != fixture.Source.Year || !slices.Equal(tables(sheet.Source), tables(fixture.Source)) {
+		t.Errorf("real-data source = %+v, fixture = %+v", sheet.Source, fixture.Source)
+	}
+	realData, fixtureData := *sheet, *fixture
+	realData.Source, fixtureData.Source = Source{}, Source{}
+	if !reflect.DeepEqual(realData, fixtureData) {
 		t.Error("real-data sheet differs from the fixture sheet")
 	}
 	t.Logf("LoadSheet(884): %s (six complete CSV scans)", elapsed)
@@ -541,5 +555,27 @@ func TestLoadSheetRelated(t *testing.T) {
 	}
 	if len(ids) != 7 || !ids["1937"] || ids["1936"] {
 		t.Errorf("IDs = %v", ids)
+	}
+}
+
+func TestLoadSheetSource(t *testing.T) {
+	sheet, err := fixtureDir().LoadSheet("884")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := sheet.Source
+	if src.Year != 2024 || len(src.Files) != len(csvNumbers) {
+		t.Fatalf("source = %+v", src)
+	}
+	for i, f := range src.Files {
+		if f.Table != csvNumbers[i] {
+			t.Errorf("files[%d].Table = %q, want %q", i, f.Table, csvNumbers[i])
+		}
+		if !strings.HasPrefix(f.Name, f.Table+"_RS_2024_") || !strings.HasSuffix(f.Name, ".csv") || strings.ContainsRune(f.Name, filepath.Separator) {
+			t.Errorf("files[%d].Name = %q", i, f.Name)
+		}
+		if _, err := os.Stat(filepath.Join(fixtureDir().Path, f.Name)); err != nil {
+			t.Errorf("files[%d]: %v", i, err)
+		}
 	}
 }
