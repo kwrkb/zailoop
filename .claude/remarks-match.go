@@ -3,13 +3,15 @@
 // デジタル庁の個別システムの 1-2 備考に書かれた過年度の執行額を、5-1 の支出ブロック計と突き合わせる。
 // 確認記録（checks/<ID>.md）の sheet_ref の候補を作るための補助で、兆候には使わない（LESSONS 2026-10-30）。
 // 使い方: go run .claude/remarks-match.go [-dir data/csv] [-year 2025] [-all]
-// 出力は TSV。既定では備考の定型が読めた事業のうち、判定が「一致」のものを省く。
+// 出力は TSV。先頭の「# 」の行は出典と注記（grep -v '^#' で外せる）。
+// 既定では備考の定型が読めた事業のうち、判定が「一致」のものを省く。
 //
 // 照合の決まり（data-survey §6 の 15）:
 //   - 備考の定型「「区分」／執行額：YYYY年度 N千円、…」の FY(シート年度−1) の項目を合計する。「ー」は 0
 //   - 5-1 は 5-2 で「担当組織からの支出」が TRUE のブロックの合計（下流のブロックは足さない）
 //   - 備考は項目ごとに千円未満を丸めているので、項目数 × 1,000 円までの差は一致とする
 //   - 5-1 に載らない 5-2 の「国自らが支出する間接経費の金額」を足して合えば「一致（間接経費込み）」
+//   - 足すブロックの一つでも 5-1 の合計支出額が未記載なら、残りで合っても照合しない（5-1 の一部が未記載）
 package main
 
 import (
@@ -23,6 +25,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/kwrkb/zailoop/internal/render"
 )
 
 var (
@@ -165,11 +169,16 @@ func main() {
 	})
 
 	blocks := map[string]map[string]int64{}
+	seen51 := map[string]map[string]bool{} // 合計支出額の有無によらず 5-1 に出たブロック
 	each(*dir, "5-1", *year, func(_ int, col func(string) string) {
 		id := col("予算事業ID")
 		if _, ok := remarks[id]; !ok {
 			return
 		}
+		if seen51[id] == nil {
+			seen51[id] = map[string]bool{}
+		}
+		seen51[id][col("支出先ブロック番号")] = true
 		if n, ok := yen(col("ブロックの合計支出額")); ok {
 			if blocks[id] == nil {
 				blocks[id] = map[string]int64{}
@@ -206,19 +215,30 @@ func main() {
 		return a < b
 	})
 
+	fmt.Println("# " + render.Attribution)
+	fmt.Println("# " + render.Disclaimer)
 	fmt.Println("予算事業ID\t府省庁\t判定\t備考\t金額の項目数\t5-1\t間接経費\t2-1執行\tsheet_ref 候補")
 	count := map[string]int{}
 	for _, id := range ids {
 		rm := remarks[id]
-		// 5-1 に該当ブロックがない事業は、支出 0 円ではなく欠測として扱う
+		// 足すのは 5-2 の担当組織からの支出のブロック。5-2 にない事業は 5-1 の全ブロック。
+		// 合計支出額が未記載のブロックは支出 0 円ではなく欠測として扱う
+		targets := roots[id]
+		if len(targets) == 0 {
+			targets = seen51[id]
+		}
 		var spent int64
 		has51 := false
-		for no, n := range blocks[id] {
-			if len(roots[id]) == 0 || roots[id][no] {
+		var missing []string
+		for no := range targets {
+			if n, ok := blocks[id][no]; ok {
 				spent += n
 				has51 = true
+			} else {
+				missing = append(missing, no)
 			}
 		}
+		sort.Strings(missing)
 		tol := int64(1000 * rm.amounts)
 		near := func(x int64) bool { d := x - rm.sum; return -tol <= d && d <= tol }
 
@@ -230,6 +250,8 @@ func main() {
 			verdict = fmt.Sprintf("備考の FY%d はすべてー", fy)
 		case !has51:
 			verdict = "5-1 なし"
+		case len(missing) > 0:
+			verdict = "5-1 の一部が未記載"
 		case near(spent):
 			verdict = "一致"
 		case indirect[id] != 0 && near(spent+indirect[id]):
@@ -270,8 +292,10 @@ func main() {
 			sum = strconv.FormatInt(rm.sum, 10)
 		}
 		s51 := "-"
-		if has51 {
+		if has51 && len(missing) == 0 {
 			s51 = strconv.FormatInt(spent, 10)
+		} else if has51 {
+			s51 = "未記載 " + strings.Join(missing, ",")
 		}
 		fmt.Printf("%s\t%s\t%s\t%s\t%d\t%s\t%d\t%s\t%s\n", id, rm.org, verdict, sum, rm.amounts, s51, indirect[id], ex, ref)
 	}
@@ -285,6 +309,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, " / %s %d", k, count[k])
 	}
 	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, render.Attribution)
+	fmt.Fprintln(os.Stderr, render.Disclaimer)
 }
 
 func comma(n int64) string {
