@@ -6,7 +6,7 @@
 |---|---|---|
 | `cmd/zailoop` | サブコマンド `fetch` / `show` / `build` | あり |
 | `internal/fetch` | 配布 ZIP の取得（1 ファイル 1 回）、検証、展開 | HTTP / ファイル |
-| `internal/rs` | CSV 読み取りと `Sheet` の組み立て。列名を知る唯一の場所 | ファイル |
+| `internal/rs` | CSV 読み取りと `Sheet` の組み立て。列名を知る唯一の場所。`schema.go` はヘッダの年度間比較（`CompareHeaders`）と必須列の不足（`MissingColumns`）で、`fetch` の最後に `cmd/zailoop` の `checkHeaders` が出す | ファイル |
 | `internal/lifecycle` | `Sheet` → 6 段階 `Lifecycle`。年度の対応、欠測・算出不能の状態判定 | なし |
 | `internal/render` | `Lifecycle` → テキスト。出典表記と金額整形関数（site からも使う） | `io.Writer` |
 | `internal/site` | 全事業を静的サイトに書き出す。`Build(src, out, opt)`。テンプレートとアセットは `embed` | ファイル |

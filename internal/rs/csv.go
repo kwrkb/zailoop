@@ -126,6 +126,39 @@ func (f *csvFile) row(record []string) csvRow { return csvRow{columns: f.columns
 
 func (f *csvFile) Close() error { return f.f.Close() }
 
+// headerColumns はヘッダ行から列名（別名を含む）→ 列位置を作る。
+func headerColumns(header []string) (map[string][]int, error) {
+	columns := make(map[string][]int, len(header))
+	for i, name := range header {
+		if _, exists := columns[name]; exists {
+			return nil, fmt.Errorf("ヘッダ %q が重複しています", name)
+		}
+		columns[name] = []int{i}
+	}
+	for name, aliases := range columnAliases {
+		if _, exists := columns[name]; exists {
+			continue
+		}
+		for _, alias := range aliases {
+			if i, ok := columns[alias]; ok {
+				columns[name] = append(columns[name], i...)
+			}
+		}
+	}
+	return columns, nil
+}
+
+// missingColumns は 予算事業ID と required のうち columns にない列名を、その順に返す。
+func missingColumns(columns map[string][]int, required []string) []string {
+	var missing []string
+	for _, name := range append([]string{"予算事業ID"}, required...) {
+		if _, exists := columns[name]; !exists {
+			missing = append(missing, name)
+		}
+	}
+	return missing
+}
+
 func (d Dir) openCSV(number string, required []string) (*csvFile, error) {
 	pattern := filepath.Join(d.Path, fmt.Sprintf("%s_RS_%d_*.csv", number, d.Year))
 	paths, err := filepath.Glob(pattern)
@@ -157,27 +190,12 @@ func (d Dir) openCSV(number string, required []string) (*csvFile, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: ヘッダ: %w", path, err)
 	}
-	columns := make(map[string][]int, len(header))
-	for i, name := range header {
-		if _, exists := columns[name]; exists {
-			return nil, fmt.Errorf("%s: ヘッダ %q が重複しています", path, name)
-		}
-		columns[name] = []int{i}
+	columns, err := headerColumns(header)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	for name, aliases := range columnAliases {
-		if _, exists := columns[name]; exists {
-			continue
-		}
-		for _, alias := range aliases {
-			if i, ok := columns[alias]; ok {
-				columns[name] = append(columns[name], i...)
-			}
-		}
-	}
-	for _, name := range append([]string{"予算事業ID"}, required...) {
-		if _, exists := columns[name]; !exists {
-			return nil, fmt.Errorf("%s: 必須ヘッダ %q がありません", path, name)
-		}
+	if missing := missingColumns(columns, required); len(missing) > 0 {
+		return nil, fmt.Errorf("%s: 必須ヘッダ %q がありません", path, missing[0])
 	}
 	ready = true
 	return &csvFile{path: path, f: f, reader: reader, idIndex: columns["予算事業ID"][0], columns: columns}, nil

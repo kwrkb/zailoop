@@ -10,6 +10,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -204,8 +205,67 @@ func runFetch(args []string) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	_, err = fetch.Fetch(ctx, *year, filepath.Join(*data, "raw"), filepath.Join(*data, "csv"), fetch.Options{Log: os.Stderr, Refresh: *refresh})
-	return err
+	csvDir := filepath.Join(*data, "csv")
+	if _, err := fetch.Fetch(ctx, *year, filepath.Join(*data, "raw"), csvDir, fetch.Options{Log: os.Stderr, Refresh: *refresh}); err != nil {
+		return err
+	}
+	return checkHeaders(os.Stderr, csvDir, *year)
+}
+
+// checkHeaders は取得した年度のヘッダを前年度（手元にあれば）と比べて w に出し、
+// zailoop が読む列が欠けていればエラーを返す（取得したファイルはそのまま残る）。
+func checkHeaders(w io.Writer, csvDir string, year int) error {
+	cur := rs.Dir{Path: csvDir, Year: year}
+	prev := rs.Dir{Path: csvDir, Year: year - 1}
+	if ph, err := prev.Headers(); err != nil {
+		return err
+	} else if len(ph) > 0 {
+		diffs, err := rs.CompareHeaders(prev, cur)
+		if err != nil {
+			return err
+		}
+		ch, err := cur.Headers()
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(w, "ヘッダの比較（%d → %d）: %d 表中 %d 表に差\n", year-1, year, max(len(ph), len(ch)), len(diffs))
+		for _, d := range diffs {
+			switch {
+			case d.OnlyPrev:
+				fmt.Fprintf(w, "  %-4s %d 年度にだけある表\n", d.Table, year-1)
+			case d.OnlyCur:
+				fmt.Fprintf(w, "  %-4s %d 年度にだけある表\n", d.Table, year)
+			default:
+				fmt.Fprintf(w, "  %-4s 追加 %s\n", d.Table, columnList(d.Added))
+				fmt.Fprintf(w, "       削除 %s\n", columnList(d.Removed))
+			}
+		}
+	}
+	missing, err := cur.MissingColumns()
+	if err != nil {
+		return err
+	}
+	if len(missing) == 0 {
+		fmt.Fprintln(w, "zailoop が読む列: 8 表すべてそろっている")
+		return nil
+	}
+	tables := make([]string, 0, len(missing))
+	for t := range missing {
+		tables = append(tables, t)
+	}
+	sort.Strings(tables)
+	var parts []string
+	for _, t := range tables {
+		parts = append(parts, t+" "+strings.Join(missing[t], "、"))
+	}
+	return fmt.Errorf("取得は完了。zailoop が読む列が不足: %s（docs/data-survey.md と internal/rs の columnAliases を見直す）", strings.Join(parts, " / "))
+}
+
+func columnList(cols []string) string {
+	if len(cols) == 0 {
+		return "なし"
+	}
+	return strings.Join(cols, "、")
 }
 
 func runShow(args []string) error {
