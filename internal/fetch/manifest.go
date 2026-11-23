@@ -28,9 +28,6 @@ type entry struct {
 	FetchedAt string `json:"fetched_at"`
 	// CheckedAt は配布元の内容がこの ZIP と同じだと最後に確かめた日時（取得時または --refresh 時）。
 	CheckedAt string `json:"checked_at"`
-
-	previous  string // refresh で退避した旧 ZIP（記録しない）
-	csvBefore string // refresh 前に記録されていた CSV の SHA-256（記録しない）
 }
 
 func manifestPath(rawDir string, year int) string {
@@ -55,12 +52,20 @@ func loadManifest(rawDir string, year int) (*manifest, error) {
 	return m, nil
 }
 
-// entry は name の記録を返す。なければ FileNames の順に並ぶ位置へ足す。
-func (m *manifest) entry(name string) *entry {
+// find は name の記録を返す。なければ nil。
+func (m *manifest) find(name string) *entry {
 	for _, e := range m.Files {
 		if e.Name == name {
 			return e
 		}
+	}
+	return nil
+}
+
+// entry は name の記録を返す。なければ FileNames の順に並ぶ位置へ足す。
+func (m *manifest) entry(name string) *entry {
+	if e := m.find(name); e != nil {
+		return e
 	}
 	e := &entry{Name: name}
 	m.Files = append(m.Files, e)

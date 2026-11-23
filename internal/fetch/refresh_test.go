@@ -307,3 +307,98 @@ func TestRefreshLogsStates(t *testing.T) {
 		t.Fatalf("seen %d of %d files in log:\n%s", seen, len(want), log.String())
 	}
 }
+
+// assertIntact は refresh が失敗した後、ZIP・CSV・記録が v1 のまま残り、一時ファイルがないことを確かめる。
+// skip の名前は ZIP の照合を省く（テストで ZIP の場所をふさいだもの）。
+func assertIntact(t *testing.T, raw, csvDir, manifestBefore string, skip string) {
+	t.Helper()
+	if after := readFile(t, manifestPath(raw, 2024)); after != manifestBefore {
+		t.Fatalf("manifest changed:\n%s", after)
+	}
+	m, _ := loadManifest(raw, 2024)
+	for _, e := range m.Files {
+		if got := readFile(t, filepath.Join(csvDir, e.Name+".csv")); got != "v1\n" {
+			t.Errorf("%s csv = %q, want v1", e.Name, got)
+		}
+		if e.Name == skip {
+			continue
+		}
+		if s, _ := fileSHA256(filepath.Join(raw, e.Name+".zip")); s != e.ZipSHA256 {
+			t.Errorf("%s zip was replaced", e.Name)
+		}
+	}
+	for _, pat := range []string{filepath.Join(raw, "*.part"), filepath.Join(csvDir, "*.part"), filepath.Join(csvDir, ".refresh-*")} {
+		if left, _ := filepath.Glob(pat); len(left) != 0 {
+			t.Errorf("temp files left: %v", left)
+		}
+	}
+}
+
+func TestRefreshPrepareFailureLeavesEverythingIntact(t *testing.T) {
+	version := "v1\n"
+	d := &distServer{t: t, body: func(string) string { return version }}
+	srv := httptest.NewServer(d)
+	defer srv.Close()
+	raw, csvDir := t.TempDir(), t.TempDir()
+	opt := Options{BaseURL: srv.URL, Delay: 1, Now: fixedClock("2026-11-01T00:00:00Z")}
+	if _, err := Fetch(context.Background(), 2024, raw, csvDir, opt); err != nil {
+		t.Fatal(err)
+	}
+	before := readFile(t, manifestPath(raw, 2024))
+	// 6 本目の既存 ZIP を読めなくする。取得は 15 本とも成功し、5 本目までは CSV を展開した後で失敗する。
+	blocked := FileNames(2024)[5]
+	zipPath := filepath.Join(raw, blocked+".zip")
+	if err := os.Remove(zipPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(zipPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	version = "v2\n"
+	opt.Refresh = true
+	opt.Now = fixedClock("2026-11-23T00:00:00Z")
+	if _, err := Fetch(context.Background(), 2024, raw, csvDir, opt); err == nil {
+		t.Fatal("expected error")
+	}
+	assertIntact(t, raw, csvDir, before, blocked)
+	if _, err := os.Stat(filepath.Join(raw, "old")); err == nil {
+		t.Fatal("nothing should be moved to old/")
+	}
+}
+
+func TestRefreshPublishFailureRollsBack(t *testing.T) {
+	version := "v1\n"
+	d := &distServer{t: t, body: func(string) string { return version }}
+	srv := httptest.NewServer(d)
+	defer srv.Close()
+	raw, csvDir := t.TempDir(), t.TempDir()
+	opt := Options{BaseURL: srv.URL, Delay: 1, Now: fixedClock("2026-11-01T00:00:00Z")}
+	if _, err := Fetch(context.Background(), 2024, raw, csvDir, opt); err != nil {
+		t.Fatal(err)
+	}
+	before := readFile(t, manifestPath(raw, 2024))
+	m0, _ := loadManifest(raw, 2024)
+	// 6 本目の旧 ZIP の退避先をディレクトリでふさぐ。5 本目までは差し替えた後で失敗する。
+	e5 := m0.Files[5]
+	blocker := filepath.Join(raw, "old", e5.Name+"."+e5.ZipSHA256[:12]+".zip")
+	if err := os.MkdirAll(filepath.Join(blocker, "x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	version = "v2\n"
+	opt.Refresh = true
+	opt.Now = fixedClock("2026-11-23T00:00:00Z")
+	_, err := Fetch(context.Background(), 2024, raw, csvDir, opt)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "元に戻した") {
+		t.Fatalf("err = %v", err)
+	}
+	assertIntact(t, raw, csvDir, before, "")
+	olds, _ := filepath.Glob(filepath.Join(raw, "old", "*"))
+	if len(olds) != 1 || olds[0] != blocker {
+		t.Fatalf("old/ = %v, want only the blocker", olds)
+	}
+}
