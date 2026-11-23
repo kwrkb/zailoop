@@ -57,7 +57,7 @@ func TestMissingRequiredHeaders(t *testing.T) {
 
 func TestInvalidNumbersHaveContext(t *testing.T) {
 	for _, test := range []struct{ number, column, value string }{
-		{"1-2", "事業年度", "not-a-year"}, {"2-1", "予算年度", ""},
+		{"1-2", "事業年度", "not-a-year"}, {"2-1", "予算年度", "bad"},
 		{"2-1", "当初予算（合計）", "bad"}, {"2-1", "翌年度要求額（合計）", "1.2"},
 		{"2-1", "第5次補正予算", "bad"}, {"2-1", "予備費等4", "bad"}, {"2-1", "要望額", "bad"},
 		{"2-1", "執行率", "bad"}, {"2-1", "執行率", "NaN"}, {"2-1", "執行率", "+Inf"},

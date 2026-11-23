@@ -5,7 +5,7 @@ import { crosstab } from "../stats.ts";
 import { withParams } from "../state.ts";
 import { PAGE, badges, loopCell, ministryOptions, nameCell, paged, scroll, select, sortOptions, summaryLine, th, yenCell } from "./common.ts";
 
-const ORDER = ["縮減", "廃止", "終了予定", "執行等改善", "年度内に改善を検討", "現状通り", "(空)"];
+const ORDER = ["縮減", "廃止", "終了予定", "予定通り終了", "執行等改善", "年度内に改善を検討", "現状通り", "(空)"];
 
 export function renderLoops(root: HTMLElement, rows: Row[], meta: Meta, params: URLSearchParams, update: (p: URLSearchParams) => void) {
   const m = params.get("m") ?? "";

@@ -23,7 +23,7 @@ func (d Dir) IDs() (map[string]bool, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s: CSV 読み取り: %w", file.path, err)
 		}
-		ids[strings.TrimSpace(record[file.columns["予算事業ID"]])] = true
+		ids[strings.TrimSpace(record[file.idIndex])] = true
 	}
 }
 

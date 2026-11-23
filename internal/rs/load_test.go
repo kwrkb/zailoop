@@ -266,6 +266,18 @@ func newTestDir(t *testing.T, rows map[string][]csvValues) Dir {
 	return dir
 }
 
+func TestCarriedOutNotDerivedBefore2026(t *testing.T) {
+	sheet, err := fixtureDir().LoadSheet("884")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, b := range sheet.Budgets {
+		if b.Total.CarriedOutDerived {
+			t.Errorf("FY%d: CarriedOutDerived = true for a sheet with the carried-out column", b.Year)
+		}
+	}
+}
+
 func TestBudgetMismatch(t *testing.T) {
 	total := csvValues{
 		"予算年度": "2023", "会計区分": "一般会計", // Classification must ignore the category.

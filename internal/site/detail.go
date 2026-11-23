@@ -19,9 +19,10 @@ var templateFS embed.FS
 var assetFS embed.FS
 
 var funcs = template.FuncMap{
-	"yen":   render.Yen,
-	"ratio": render.Ratio,
-	"term":  render.TermLabel,
+	"yen":       render.Yen,
+	"ratio":     render.Ratio,
+	"term":      render.TermLabel,
+	"carryNote": render.CarriedOutNote,
 	"metric": func(o lifecycle.OutcomeLine) string {
 		return render.MetricLabel(o)
 	},

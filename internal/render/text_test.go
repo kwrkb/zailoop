@@ -156,3 +156,18 @@ func TestTextSourceFiles(t *testing.T) {
 		t.Errorf("footer missing %q in:\n%s", want, out)
 	}
 }
+
+func TestCarriedOutNote(t *testing.T) {
+	for _, test := range []struct {
+		st   lifecycle.Settlement
+		want string
+	}{
+		{lifecycle.Settlement{CarriedOut: rs.Yen{Value: 5, Valid: true}}, ""},
+		{lifecycle.Settlement{CarriedOut: rs.Yen{Value: 5, Valid: true}, CarriedOutDerived: true}, "（翌年度の「前年度から繰越し」から導出）"},
+		{lifecycle.Settlement{CarriedOutDerived: true}, "（翌年度の行がないため不明）"},
+	} {
+		if got := CarriedOutNote(test.st); got != test.want {
+			t.Errorf("CarriedOutNote(%+v) = %q, want %q", test.st, got, test.want)
+		}
+	}
+}

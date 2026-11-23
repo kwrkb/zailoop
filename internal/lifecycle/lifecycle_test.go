@@ -114,6 +114,17 @@ func TestBuildCurrentZeroWithExecution(t *testing.T) {
 	}
 }
 
+func TestBuildUnknownCarriedOut(t *testing.T) {
+	// 2026 年度シートは翌年度繰越を翌予算年度の行から導くため、その行がないと繰越が分からない。
+	s := &rs.Sheet{FiscalYear: 2026, Budgets: []rs.BudgetYear{
+		{Year: 2025, HasTotal: true, Total: rs.BudgetTotal{Current: y(1000), Executed: y(600), CarriedOutDerived: true}},
+	}}
+	lc := Build(s, Options{})
+	if lc.Settlement.UnusedState != StateNotComputable || lc.Settlement.Unused.Valid || !lc.Settlement.CarriedOutDerived {
+		t.Errorf("Settlement = %+v", lc.Settlement)
+	}
+}
+
 func TestBuildNegativeDiff(t *testing.T) {
 	s := &rs.Sheet{FiscalYear: 2024, Budgets: []rs.BudgetYear{
 		{Year: 2023, HasTotal: true, Total: rs.BudgetTotal{Current: y(1000), Executed: y(600), CarriedOut: y(700)}},

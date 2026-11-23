@@ -267,7 +267,7 @@ func judgeLoop(lp Loop) LoopVerdict {
 		return VerdictUnknown
 	}
 	switch lp.Reflection {
-	case "縮減", "廃止", "終了予定":
+	case "縮減", "廃止", "終了予定", "予定通り終了": // 「予定通り終了」は 2026 年度シートでの「終了予定」
 		if lp.NextInitial.Value > lp.Initial.Value {
 			return VerdictContradiction
 		}

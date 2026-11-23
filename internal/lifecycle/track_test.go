@@ -207,3 +207,13 @@ func TestTrackSources(t *testing.T) {
 		t.Errorf("Latest.Source = %+v", tl.Latest.Source)
 	}
 }
+
+func TestJudgeLoopRenamedEnd(t *testing.T) {
+	// 2026 年度シートの「予定通り終了」は「終了予定」と同じ扱い。
+	for _, reflection := range []string{"終了予定", "予定通り終了"} {
+		lp := Loop{Closed: true, Reflection: reflection, Initial: y(100), NextInitial: y(120)}
+		if got := judgeLoop(lp); got != VerdictContradiction {
+			t.Errorf("%s: verdict = %v, want contradiction", reflection, got)
+		}
+	}
+}
