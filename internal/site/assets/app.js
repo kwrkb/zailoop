@@ -701,7 +701,7 @@
   }
 
   // src/views/loops.ts
-  var ORDER = ["\u7E2E\u6E1B", "\u5EC3\u6B62", "\u7D42\u4E86\u4E88\u5B9A", "\u57F7\u884C\u7B49\u6539\u5584", "\u5E74\u5EA6\u5185\u306B\u6539\u5584\u3092\u691C\u8A0E", "\u73FE\u72B6\u901A\u308A", "(\u7A7A)"];
+  var ORDER = ["\u7E2E\u6E1B", "\u5EC3\u6B62", "\u7D42\u4E86\u4E88\u5B9A", "\u4E88\u5B9A\u901A\u308A\u7D42\u4E86", "\u57F7\u884C\u7B49\u6539\u5584", "\u5E74\u5EA6\u5185\u306B\u6539\u5584\u3092\u691C\u8A0E", "\u73FE\u72B6\u901A\u308A", "(\u7A7A)"];
   function renderLoops(root, rows, meta, params, update) {
     const m = params.get("m") ?? "";
     const refl = params.get("r") ?? "";

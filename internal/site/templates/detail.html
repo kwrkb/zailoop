@@ -161,7 +161,7 @@
 <section class="stage" id="s4"><h2>④ 決算 <small>FY{{$n}} 繰越・不用（不用相当額は 現額−執行−翌年度繰越 の導出値）</small></h2>
   {{with .LC.Settlement}}
   <dl>
-    <dt><a class="term" href="{{$.Root}}terms.html#{{termID "翌年度繰越"}}">翌年度繰越</a></dt><dd>{{yen .CarriedOut}}</dd>
+    <dt><a class="term" href="{{$.Root}}terms.html#{{termID "翌年度繰越"}}">翌年度繰越</a></dt><dd>{{yen .CarriedOut}}{{with carryNote .}} <span class="muted">{{.}}</span>{{end}}</dd>
     <dt><a class="term" href="{{$.Root}}terms.html#{{termID "不用相当額"}}">不用相当額</a></dt><dd>{{if isOK .UnusedState}}{{yen .Unused}}{{else if eq (state .UnusedState) "要確認"}}算出不能／差額 {{yenSigned .Diff}}（要確認）{{else if eq (state .UnusedState) "算出対象外"}}—（算出対象外）{{else}}{{state .UnusedState}}{{end}}</dd>
   </dl>{{end}}
 </section>

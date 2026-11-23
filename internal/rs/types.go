@@ -43,17 +43,20 @@ type Project struct {
 
 // BudgetTotal は 2-1 の合計行（列「当初予算（合計）」〜「翌年度要求額（合計）」）。
 type BudgetTotal struct {
-	Initial       Yen    // 当初予算（合計）
-	Supplementary Yen    // 補正予算（合計）
-	CarriedIn     Yen    // 前年度からの繰越し（合計）
-	Reserve       Yen    // 予備費等（合計）
-	Current       Yen    // 計（歳出予算現額合計）
-	Executed      Yen    // 執行額（合計）
-	ExecRate      Ratio  // 執行率
-	CarriedOut    Yen    // 翌年度への繰越し(合計）
-	NextRequest   Yen    // 翌年度要求額（合計）
-	ChangeReason  string // 主な増減理由
-	Notes         string // その他特記事項
+	Initial       Yen   // 当初予算（合計）
+	Supplementary Yen   // 補正予算（合計）
+	CarriedIn     Yen   // 前年度からの繰越し（合計）
+	Reserve       Yen   // 予備費等（合計）
+	Current       Yen   // 計（歳出予算現額合計）
+	Executed      Yen   // 執行額（合計）
+	ExecRate      Ratio // 執行率（比率。2026 年度シートの百分率は 100 で割る）
+	CarriedOut    Yen   // 翌年度への繰越し(合計）。2026 年度シートは列がなく、翌予算年度の前年度からの繰越しを入れる
+	// CarriedOutDerived は CarriedOut を翌予算年度の行から導いたこと（2026 年度シート）。
+	// 翌予算年度の行がなければ CarriedOut は無効のまま。
+	CarriedOutDerived bool
+	NextRequest       Yen    // 翌年度要求額（合計）
+	ChangeReason      string // 主な増減理由
+	Notes             string // その他特記事項
 }
 
 // BudgetAccount は 2-1 の会計別行（列「当初予算」〜「要望額」）。

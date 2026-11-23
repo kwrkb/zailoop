@@ -82,11 +82,13 @@ type Execution struct {
 
 // Settlement は ④ 決算。Unused は導出値。
 type Settlement struct {
-	FiscalYear  int
-	CarriedOut  rs.Yen
-	Unused      rs.Yen // 現額 − 執行 − 翌年度繰越（State が OK のときだけ意味を持つ）
-	UnusedState State
-	Diff        int64 // State が NeedsReview のときの差額（負値）
+	FiscalYear int
+	CarriedOut rs.Yen
+	// CarriedOutDerived は翌年度繰越を翌予算年度の「前年度から繰越し」から導いたこと（2026 年度シート）。
+	CarriedOutDerived bool
+	Unused            rs.Yen // 現額 − 執行 − 翌年度繰越（State が OK のときだけ意味を持つ）
+	UnusedState       State
+	Diff              int64 // State が NeedsReview のときの差額（負値）
 }
 
 // OutcomeLine は ⑤ の成果指標 1 件（FY N の目標と実績）。
@@ -342,7 +344,7 @@ func buildSettlement(s *rs.Sheet, n int) Settlement {
 		return st
 	}
 	t := b.Total
-	st.CarriedOut = t.CarriedOut
+	st.CarriedOut, st.CarriedOutDerived = t.CarriedOut, t.CarriedOutDerived
 	if !t.Current.Valid || !t.Executed.Valid {
 		return st
 	}
@@ -350,10 +352,12 @@ func buildSettlement(s *rs.Sheet, n int) Settlement {
 		st.UnusedState = StateNotComputable
 		return st
 	}
-	diff := t.Current.Value - t.Executed.Value
-	if t.CarriedOut.Valid {
-		diff -= t.CarriedOut.Value
+	if !t.CarriedOut.Valid {
+		// 2026 年度シートは翌年度繰越を翌予算年度の行から導くため、その行がないと繰越が分からない。
+		st.UnusedState = StateNotComputable
+		return st
 	}
+	diff := t.Current.Value - t.Executed.Value - t.CarriedOut.Value
 	if diff < 0 {
 		st.UnusedState = StateNeedsReview
 		st.Diff = diff

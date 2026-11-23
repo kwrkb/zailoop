@@ -48,13 +48,13 @@ func (b *indicatorBuilder) row(r *csvRow) error {
 	switch kind := strings.TrimSpace(r.text("目標年度／目標値／実績値／達成率")); kind {
 	case "":
 		return nil // Activities have no year-value rows.
-	case "1.目標年度":
+	case "1.目標年度", "目標年度": // 2026 年度シートから番号が付かない
 		values = indicator.TargetYear
-	case "2.目標値":
+	case "2.目標値", "目標値": // 2026 年度シートから番号が付かない
 		values = indicator.Targets
-	case "3.実績値":
+	case "3.実績値", "実績値": // 2026 年度シートから番号が付かない
 		values = indicator.Actuals
-	case "4.達成率":
+	case "4.達成率", "達成率": // 2026 年度シートから番号が付かない
 		values = indicator.Rates
 	default:
 		return fmt.Errorf("目標年度／目標値／実績値／達成率: 不明な行種別 %q", kind)

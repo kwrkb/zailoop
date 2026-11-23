@@ -142,7 +142,7 @@ func text(p *printer, lc *lifecycle.Lifecycle) {
 	// ④ 決算
 	st := lc.Settlement
 	p.h("④ 決算", fmt.Sprintf("FY%d 繰越・不用（不用相当額は 現額−執行−翌年度繰越 の導出値）", n))
-	p.kv("翌年度繰越", Yen(st.CarriedOut))
+	p.kv("翌年度繰越", Yen(st.CarriedOut)+CarriedOutNote(st))
 	switch st.UnusedState {
 	case lifecycle.StateOK:
 		p.kv("不用相当額", Yen(st.Unused))
@@ -429,4 +429,16 @@ func shortNum(x float64) string {
 		return strings.TrimSuffix(YenValue(int64(math.Floor(x+0.5))), " 円")
 	}
 	return strconv.FormatFloat(math.Floor(x*10+0.5)/10, 'f', -1, 64)
+}
+
+// CarriedOutNote は、翌年度繰越をシートの列ではなく翌予算年度の行から導いたときの注記を返す。
+func CarriedOutNote(st lifecycle.Settlement) string {
+	switch {
+	case !st.CarriedOutDerived:
+		return ""
+	case st.CarriedOut.Valid:
+		return "（翌年度の「前年度から繰越し」から導出）"
+	default:
+		return "（翌年度の行がないため不明）"
+	}
 }

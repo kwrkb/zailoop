@@ -5,11 +5,16 @@ import (
 	"fmt"
 	"math/big"
 	"slices"
+	"strings"
 )
+
+// carriedOutColumn は 2025 年度シートまでの 2-1 にある列。2026 年度シートで無くなった。
+// この列がないファイルを 2026 年度形式として読む（budgetBuilder.merged）。
+const carriedOutColumn = "翌年度への繰越し(合計）"
 
 var totalColumns = []string{
 	"当初予算（合計）", "補正予算（合計）", "前年度からの繰越し（合計）", "予備費等（合計）",
-	"計（歳出予算現額合計）", "執行額（合計）", "執行率", "翌年度への繰越し(合計）", "翌年度要求額（合計）",
+	"計（歳出予算現額合計）", "執行額（合計）", "執行率", "翌年度要求額（合計）",
 }
 
 var accountColumns = []string{
@@ -24,50 +29,86 @@ var budgetColumns = func() []string {
 	return append(columns, accountColumns...)
 }()
 
+// budgetBuilder は 2-1 を予算年度ごとにまとめる。
+//
+// 2025 年度シートまでは、合計行（合計列だけが埋まる）と会計別行（会計別列だけが埋まる）が別の行で、
+// 金額の 0 は明示的に 0 と書かれる。2026 年度シートは次の点が違う（merged）。
+//   - 合計列が会計別行の各行に繰り返し載る。同じ値の繰り返しは 1 つの合計として扱う
+//   - 金額の 0 が空欄で書かれる。その予算年度の行がある場合に限り、金額の空欄を 0 と読む
+//     （すべて 0 の年度は、会計区分だけが埋まった行になる）
+//   - 翌年度への繰越しの列がない。翌予算年度の「前年度からの繰越し」を FY N の翌年度繰越とする
+//     （2025 年度シートでは両者が全組で一致した。docs/data-survey.md）
+//   - 執行率が百分率（79.6）で書かれる。2025 年度シートまでと同じ比率（0.796）に直す
+//   - 予算のない事業は予算年度も空欄の 1 行だけを持つ
 type budgetBuilder struct {
 	sheet       *Sheet
 	byYear      map[int]*BudgetYear
 	totalCounts map[int]int
+	merged      bool
 }
 
 func (b *budgetBuilder) row(r *csvRow) error {
+	hasTotal := r.hasAny(totalColumns) || strings.TrimSpace(r.text(carriedOutColumn)) != ""
+	hasAccount := r.hasAny(accountColumns)
+	if !hasTotal && !hasAccount && strings.TrimSpace(r.text("予算年度")) == "" {
+		return nil // Projects without any budget year have an empty placeholder row.
+	}
+	b.merged = !r.has(carriedOutColumn)
+	if b.merged {
+		hasTotal, hasAccount = true, true // すべて 0 の年度は金額がすべて空欄の行になる
+	}
 	year := r.year("予算年度")
 	budget := b.byYear[year]
 	if budget == nil {
 		budget = &BudgetYear{Year: year}
 		b.byYear[year] = budget
 	}
-	hasTotal, hasAccount := r.hasAny(totalColumns), r.hasAny(accountColumns)
 	if !hasTotal && !hasAccount {
 		budget.Issues = append(budget.Issues, "合計列・会計別列がともに空の行を無視しました")
 		return nil
 	}
+	yen := r.yen
+	if b.merged {
+		yen = func(name string) Yen {
+			if v := r.yen(name); v.Valid {
+				return v
+			}
+			return Yen{Valid: true}
+		}
+	}
 	if hasTotal {
 		total := BudgetTotal{
-			Initial: r.yen("当初予算（合計）"), Supplementary: r.yen("補正予算（合計）"),
-			CarriedIn: r.yen("前年度からの繰越し（合計）"), Reserve: r.yen("予備費等（合計）"),
-			Current: r.yen("計（歳出予算現額合計）"), Executed: r.yen("執行額（合計）"),
-			ExecRate: r.ratio("執行率"), CarriedOut: r.yen("翌年度への繰越し(合計）"),
-			NextRequest:  r.yen("翌年度要求額（合計）"),
+			Initial: yen("当初予算（合計）"), Supplementary: yen("補正予算（合計）"),
+			CarriedIn: yen("前年度からの繰越し（合計）"), Reserve: yen("予備費等（合計）"),
+			Current: yen("計（歳出予算現額合計）"), Executed: yen("執行額（合計）"),
+			ExecRate: r.ratio("執行率"), NextRequest: yen("翌年度要求額（合計）"),
 			ChangeReason: r.text("主な増減理由"), Notes: r.text("その他特記事項"),
 		}
-		if b.totalCounts[year] == 0 {
-			budget.Total = total
+		if b.merged {
+			total.ExecRate.Value /= 100
+		} else {
+			total.CarriedOut = r.yen(carriedOutColumn)
 		}
-		b.totalCounts[year]++
+		switch {
+		case b.totalCounts[year] == 0:
+			budget.Total = total
+			b.totalCounts[year]++
+		case !b.merged || total != budget.Total:
+			b.totalCounts[year]++
+		}
 	}
 	if hasAccount {
 		account := BudgetAccount{
 			Category: r.text("会計区分"), Account: r.text("会計"), Subaccount: r.text("勘定"),
-			Initial: r.yen("当初予算"), CarriedIn: r.yen("前年度から繰越し"),
-			Current: r.yen("歳出予算現額"), Executed: r.yen("執行額"),
-			NextRequest: r.yen("翌年度要求額"), Demand: r.yen("要望額"), Notes: r.text("備考"),
+			Initial: yen("当初予算"), CarriedIn: yen("前年度から繰越し"),
+			Current: yen("歳出予算現額"), Executed: yen("執行額"),
+			NextRequest: yen("翌年度要求額"), Demand: yen("要望額"), Notes: r.text("備考"),
 		}
 		for i := range account.Supplementary {
-			account.Supplementary[i] = r.yen(fmt.Sprintf("第%d次補正予算", i+1))
+			account.Supplementary[i] = yen(fmt.Sprintf("第%d次補正予算", i+1))
 		}
 		for i := range account.Reserve {
-			account.Reserve[i] = r.yen(fmt.Sprintf("予備費等%d", i+1))
+			account.Reserve[i] = yen(fmt.Sprintf("予備費等%d", i+1))
 		}
 		budget.Accounts = append(budget.Accounts, account)
 	}
@@ -81,8 +122,17 @@ func (b *budgetBuilder) finish() error {
 		switch {
 		case count == 0:
 			budget.Issues = append(budget.Issues, "合計行がありません（0行）")
+		case count > 1 && b.merged:
+			budget.Issues = append(budget.Issues, fmt.Sprintf("合計列の値が行によって異なります（%d通り）。最初の行を保持しました", count))
 		case count > 1:
 			budget.Issues = append(budget.Issues, fmt.Sprintf("合計行が重複しています（%d行）。最初の行を保持しました", count))
+		}
+		if b.merged && count > 0 {
+			budget.Total.CarriedOutDerived = true
+			// 翌予算年度の合計が 1 通りに決まらないときは、繰越も分からないものとする。
+			if next := b.byYear[year+1]; next != nil && b.totalCounts[year+1] == 1 {
+				budget.Total.CarriedOut = next.Total.CarriedIn
+			}
 		}
 		if count > 0 {
 			checkBudgetTotals(budget)
@@ -135,6 +185,9 @@ var itemColumns = []string{
 type itemBuilder struct{ sheet *Sheet }
 
 func (b *itemBuilder) row(r *csvRow) error {
+	if !r.hasAny(itemColumns) {
+		return nil // Projects without any budget year have an empty placeholder row (2026 年度シート).
+	}
 	b.sheet.Items = append(b.sheet.Items, BudgetItem{
 		Year: r.year("予算年度"), Category: r.text("会計区分"), Account: r.text("会計"),
 		Subaccount: r.text("勘定"), Kind: r.text("予算種別"), Owner: r.text("所管"),

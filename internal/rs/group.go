@@ -55,7 +55,7 @@ func (r *groupReader) peek() (id string, ok bool, err error) {
 	if err != nil {
 		return "", false, fmt.Errorf("%s: CSV 読み取り: %w", r.file.path, err)
 	}
-	id = strings.TrimSpace(record[r.file.columns["予算事業ID"]])
+	id = strings.TrimSpace(record[r.file.idIndex])
 	if err := r.buffer(record, id); err != nil {
 		return "", false, err
 	}
@@ -70,7 +70,7 @@ func (r *groupReader) drain(visit func(*csvRow) error) error {
 	record := r.pending
 	r.pending = nil
 	for {
-		row := csvRow{columns: r.file.columns, fields: record}
+		row := r.file.row(record)
 		err := visit(&row)
 		if row.err != nil {
 			err = row.err
@@ -86,7 +86,7 @@ func (r *groupReader) drain(visit func(*csvRow) error) error {
 		if err != nil {
 			return fmt.Errorf("%s: CSV 読み取り: %w", r.file.path, err)
 		}
-		nextID := strings.TrimSpace(record[r.file.columns["予算事業ID"]])
+		nextID := strings.TrimSpace(record[r.file.idIndex])
 		if nextID != id {
 			return r.buffer(record, nextID)
 		}
