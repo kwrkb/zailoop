@@ -174,8 +174,8 @@ func TestRefreshReplacesChangedAndKeepsOld(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i, r := range res {
-		if r.Changed != (i == 5) {
-			t.Fatalf("Changed[%d] = %v", i, r.Changed)
+		if r.Changed != (i == 5) || r.CSVChanged != (i == 5) {
+			t.Fatalf("Changed[%d] = %v, CSVChanged = %v", i, r.Changed, r.CSVChanged)
 		}
 	}
 	prev := filepath.Join(raw, "old", target+"."+oldSHA[:12]+".zip")
@@ -233,5 +233,77 @@ func TestRefreshFailureLeavesEverythingIntact(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(raw, "old")); err == nil {
 		t.Fatal("nothing should be moved to old/")
+	}
+}
+
+func TestRefreshDistinguishesRepackFromCSVChange(t *testing.T) {
+	entry := "a.csv"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// CSV の本文は同じで、ZIP のエントリ名だけが変わる（詰め直し）
+		w.Write(makeZip(t, entry, "same\n"))
+	}))
+	defer srv.Close()
+	raw, csvDir := t.TempDir(), t.TempDir()
+	opt := Options{BaseURL: srv.URL, Delay: 1}
+	if _, err := Fetch(context.Background(), 2024, raw, csvDir, opt); err != nil {
+		t.Fatal(err)
+	}
+	entry = "b.csv"
+	var log strings.Builder
+	opt.Refresh, opt.Log = true, &log
+	res, err := Fetch(context.Background(), 2024, raw, csvDir, opt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range res {
+		if !r.Changed || r.CSVChanged {
+			t.Fatalf("want repacked (zip changed, csv same): %+v", r)
+		}
+	}
+	if n := strings.Count(log.String(), "repacked "); n != 15 {
+		t.Fatalf("repacked lines = %d\n%s", n, log.String())
+	}
+}
+
+func TestRefreshLogsStates(t *testing.T) {
+	version := "v1\n"
+	target := FileNames(2024)[3]
+	d := &distServer{t: t, body: func(name string) string {
+		if name == target {
+			return version
+		}
+		return "same\n"
+	}}
+	srv := httptest.NewServer(d)
+	defer srv.Close()
+	raw, csvDir := t.TempDir(), t.TempDir()
+	opt := Options{BaseURL: srv.URL, Delay: 1}
+	if _, err := Fetch(context.Background(), 2024, raw, csvDir, opt); err != nil {
+		t.Fatal(err)
+	}
+	// 1 本は手元から消えている（--refresh で新規に取得する）
+	missing := FileNames(2024)[0]
+	if err := os.Remove(filepath.Join(raw, missing+".zip")); err != nil {
+		t.Fatal(err)
+	}
+	version = "v2\n"
+	var log strings.Builder
+	opt.Refresh, opt.Log = true, &log
+	if _, err := Fetch(context.Background(), 2024, raw, csvDir, opt); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{missing: "fetched", target: "updated", FileNames(2024)[1]: "unchanged"}
+	seen := 0
+	for _, line := range strings.Split(strings.TrimSpace(log.String()), "\n") {
+		f := strings.Fields(line)
+		if w, ok := want[f[len(f)-1]]; ok {
+			seen++
+			if f[0] != w {
+				t.Errorf("%s: state %s, want %s", f[len(f)-1], f[0], w)
+			}
+		}
+	}
+	if seen != len(want) {
+		t.Fatalf("seen %d of %d files in log:\n%s", seen, len(want), log.String())
 	}
 }

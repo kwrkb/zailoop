@@ -29,7 +29,8 @@ type entry struct {
 	// CheckedAt は配布元の内容がこの ZIP と同じだと最後に確かめた日時（取得時または --refresh 時）。
 	CheckedAt string `json:"checked_at"`
 
-	previous string // refresh で退避した旧 ZIP（記録しない）
+	previous  string // refresh で退避した旧 ZIP（記録しない）
+	csvBefore string // refresh 前に記録されていた CSV の SHA-256（記録しない）
 }
 
 func manifestPath(rawDir string, year int) string {

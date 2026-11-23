@@ -68,13 +68,14 @@ type Options struct {
 
 // Result は 1 ファイルの取得結果。
 type Result struct {
-	Name     string
-	ZipPath  string
-	CSVPath  string
-	Skipped  bool   // 既に ZIP があり取得を省略した
-	Changed  bool   // Refresh で取り直した内容が既存の ZIP と違った
-	Previous string // Changed のとき、退避した旧 ZIP のパス
-	ZipSHA   string // ZIP の SHA-256（16 進）
+	Name       string
+	ZipPath    string
+	CSVPath    string
+	Skipped    bool   // 既に ZIP があり取得を省略した
+	Changed    bool   // Refresh で取り直した ZIP が既存の ZIP と違った
+	CSVChanged bool   // Changed のうち、展開した CSV の中身も変わった（false なら ZIP の詰め直しだけ）
+	Previous   string // Changed のとき、退避した旧 ZIP のパス
+	ZipSHA     string // ZIP の SHA-256（16 進）
 }
 
 // Fetch は year 年度の全ファイルを rawDir に ZIP として保存し、csvDir に展開する。
@@ -110,7 +111,7 @@ func Fetch(ctx context.Context, year int, rawDir, csvDir string, opt Options) (r
 			err = serr
 		}
 	}()
-	var fresh map[string]bool // Refresh で今回取得した（または内容を確認した）ファイル
+	var fresh map[string]refreshState // Refresh で今回取得した（または内容を確認した）ファイル
 	if opt.Refresh {
 		if fresh, err = refresh(ctx, year, rawDir, m, opt); err != nil {
 			return nil, err
@@ -118,7 +119,7 @@ func Fetch(ctx context.Context, year int, rawDir, csvDir string, opt Options) (r
 	}
 	for i, name := range FileNames(year) {
 		r := Result{Name: name, ZipPath: filepath.Join(rawDir, name+".zip")}
-		downloaded := false
+		downloaded := fresh[name] == refreshNew
 		switch {
 		case fresh != nil:
 			// refresh で差し替え済み
@@ -149,7 +150,7 @@ func Fetch(ctx context.Context, year int, rawDir, csvDir string, opt Options) (r
 			downloaded = true
 		}
 		e := m.entry(name)
-		if downloaded {
+		if downloaded && fresh == nil {
 			e.FetchedAt = opt.Now().Format(time.RFC3339)
 			e.CheckedAt = e.FetchedAt
 			e.ZipSHA256 = "" // 下で計算し直す
@@ -169,6 +170,11 @@ func Fetch(ctx context.Context, year int, rawDir, csvDir string, opt Options) (r
 			e.ZipSHA256 = sum
 		}
 		r.ZipSHA = sum
+		// 差し替え前の CSV のハッシュ。記録がなければ展開済みの CSV から求める。
+		prevCSV := e.csvBefore
+		if prevCSV == "" && r.Changed {
+			prevCSV, _ = fileSHA256(filepath.Join(csvDir, name+".csv"))
+		}
 		csvPath, err := Unzip(r.ZipPath, csvDir)
 		if err != nil {
 			return results, fmt.Errorf("%s: %w", name, err)
@@ -177,6 +183,7 @@ func Fetch(ctx context.Context, year int, rawDir, csvDir string, opt Options) (r
 		if e.CSVSHA256, err = fileSHA256(csvPath); err != nil {
 			return results, fmt.Errorf("%s: %w", name, err)
 		}
+		r.CSVChanged = r.Changed && e.CSVSHA256 != prevCSV
 		// 旧版が別の名前（ZIP エントリ名や文字化け名）で展開した同じ番号・年度の CSV が
 		// 残っていると、読み取り側の「番号_RS_年度_*.csv は 1 件」検査に引っかかる。
 		// 展開物は ZIP から再生成できる派生物なので、正規名以外を消す。
@@ -188,31 +195,44 @@ func Fetch(ctx context.Context, year int, rawDir, csvDir string, opt Options) (r
 			for _, p := range removed {
 				fmt.Fprintf(opt.Log, "removed stale %s\n", filepath.Base(p))
 			}
-			fmt.Fprintf(opt.Log, "%s %s %s\n", state(r, fresh != nil), sum[:12], name)
+			fmt.Fprintf(opt.Log, "%s %s %s\n", state(r, downloaded), sum[:12], name)
 		}
 		results = append(results, r)
 	}
 	return results, nil
 }
 
-func state(r Result, refreshed bool) string {
+// state はログに出す状態。fetched（新規取得）/ skipped（取得済みで省略）/
+// unchanged（--refresh で同じ内容）/ updated（CSV の中身が変わった）/ repacked（ZIP だけ変わった）。
+func state(r Result, downloaded bool) string {
 	switch {
-	case r.Changed:
+	case r.CSVChanged:
 		return "updated"
-	case refreshed:
-		return "unchanged"
+	case r.Changed:
+		return "repacked"
+	case downloaded:
+		return "fetched"
 	case r.Skipped:
 		return "skipped"
 	}
-	return "fetched"
+	return "unchanged"
 }
+
+// refreshState は refresh での 1 ファイルの結果。
+type refreshState int
+
+const (
+	refreshSame    refreshState = iota + 1 // 既存の ZIP と同じ内容
+	refreshChanged                         // 既存の ZIP と違う内容で差し替えた
+	refreshNew                             // 既存の ZIP がなかった
+)
 
 // refresh は year 年度の 15 ファイルをすべて <name>.zip.part に取得・検証してから、
 // 内容（SHA-256）が既存の ZIP と違うものだけを差し替える。旧 ZIP は rawDir/old/ に
 // <name>.<SHA-256 の先頭 12 桁>.zip として退避する。1 本でも取得に失敗したら
 // .part をすべて消してエラーを返し、既存の ZIP と記録には触れない
 // （年度の中で新旧の版が混ざらないようにする）。
-func refresh(ctx context.Context, year int, rawDir string, m *manifest, opt Options) (map[string]bool, error) {
+func refresh(ctx context.Context, year int, rawDir string, m *manifest, opt Options) (map[string]refreshState, error) {
 	names := FileNames(year)
 	parts := make([]string, 0, len(names))
 	cleanup := func() {
@@ -237,7 +257,7 @@ func refresh(ctx context.Context, year int, rawDir string, m *manifest, opt Opti
 		parts = append(parts, part)
 	}
 	now := opt.Now().Format(time.RFC3339)
-	fresh := map[string]bool{}
+	fresh := map[string]refreshState{}
 	for i, name := range names {
 		zipPath := filepath.Join(rawDir, name+".zip")
 		newSum, err := fileSHA256(parts[i])
@@ -247,9 +267,14 @@ func refresh(ctx context.Context, year int, rawDir string, m *manifest, opt Opti
 		}
 		e := m.entry(name)
 		e.previous = ""
+		e.csvBefore = e.CSVSHA256
 		oldSum, err := fileSHA256(zipPath)
+		if e.ZipSHA256 != oldSum {
+			e.csvBefore = "" // 記録が手元の ZIP と合わない。CSV のハッシュは展開済みの CSV から求める
+		}
 		switch {
 		case err == nil && oldSum == newSum:
+			fresh[name] = refreshSame
 			if e.ZipSHA256 != oldSum {
 				e.FetchedAt = "" // 記録のない ZIP。いつ取得したかは分からない
 			}
@@ -271,7 +296,9 @@ func refresh(ctx context.Context, year int, rawDir string, m *manifest, opt Opti
 			}
 			e.previous = prev
 			e.FetchedAt, e.CheckedAt = now, now
+			fresh[name] = refreshChanged
 		case errors.Is(err, fs.ErrNotExist):
+			fresh[name] = refreshNew
 			if err := os.Rename(parts[i], zipPath); err != nil {
 				cleanup()
 				return nil, err
@@ -282,7 +309,6 @@ func refresh(ctx context.Context, year int, rawDir string, m *manifest, opt Opti
 			return nil, err
 		}
 		e.ZipSHA256 = newSum
-		fresh[name] = true
 	}
 	return fresh, nil
 }
