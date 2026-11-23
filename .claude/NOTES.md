@@ -52,6 +52,8 @@
 ## データの置き場
 
 - `data/raw/<name>.zip` 取得した ZIP（不正なものは `.bad` に退避）
+- `data/raw/fetch-<year>.json` 取得記録（ZIP・CSV の SHA-256、`fetched_at`、`checked_at`）。`internal/fetch/manifest.go`
+- `data/raw/old/<name>.<SHA-256 先頭 12 桁>.zip` `fetch --refresh` で差し替えた旧版
 - `data/csv/<name>.csv` 展開した CSV
 - `testdata/2024/` 5 事業分の抜粋（ID 11, 884, 1319, 3522, 18556）、`testdata/2025/` 同 7 事業（+1937〔親事業 1936 の子、金額がすべて 0〕, 21625）、`testdata/2026/` 同 7 事業 + 21437（予算のない事業）。用途は `testdata/README.md`
 
