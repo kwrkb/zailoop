@@ -4,7 +4,7 @@
 
 | パス | 役割 | I/O |
 |---|---|---|
-| `cmd/zailoop` | サブコマンド `fetch` / `show` | あり |
+| `cmd/zailoop` | サブコマンド `fetch` / `show` / `build` | あり |
 | `internal/fetch` | 配布 ZIP の取得（1 ファイル 1 回）、検証、展開 | HTTP / ファイル |
 | `internal/rs` | CSV 読み取りと `Sheet` の組み立て。列名を知る唯一の場所 | ファイル |
 | `internal/lifecycle` | `Sheet` → 6 段階 `Lifecycle`。年度の対応、欠測・算出不能の状態判定 | なし |
@@ -14,9 +14,11 @@
 
 ## site の出力
 
-- `site/index.html` 一覧・断絶・成果の 3 ビュー。データは `<script id="zailoop-data" type="application/json">` に埋め込み（`template.JS` で素通し）
+- `site/index.html` 一覧・断絶・成果・ループ検証の 4 ビュー。データは `<script id="zailoop-data" type="application/json">` に埋め込み（`template.JS` で素通し）
 - `site/list.html` JS なしの府省庁別リンク一覧
 - `site/p/<ID>.html` 事業詳細（JS なし、相対パスで `../assets/`）
+- `site/terms.html` 用語の説明（`internal/site/terms.go`）
+- `site/` は出力先を消さずに上書きする（`_redirects` を残すため）。公開手順は README と `wrangler.jsonc` のコメント
 - 一覧 JSON のキーは `internal/site/index.go` の `Row`、デコードは `web/src/data.ts`
 - 当初予算が 0 で補正予算がある事業は、JSON の `sp`（補正、0 以外のときだけ）を一覧の当初セルに「補正 ○円」と添え、詳細の要点にも 1 文足す
 
@@ -51,7 +53,15 @@
 
 - `data/raw/<name>.zip` 取得した ZIP（不正なものは `.bad` に退避）
 - `data/csv/<name>.csv` 展開した CSV
-- `testdata/2024/` 5 事業分の抜粋（ID 11, 884, 1319, 3522, 18556）、`testdata/2025/` 同 7 事業（+1937〔親事業 1936 の子、金額がすべて 0〕, 21625）
+- `testdata/2024/` 5 事業分の抜粋（ID 11, 884, 1319, 3522, 18556）、`testdata/2025/` 同 7 事業（+1937〔親事業 1936 の子、金額がすべて 0〕, 21625）、`testdata/2026/` 同 7 事業 + 21437（予算のない事業）。用途は `testdata/README.md`
+
+## 年度による形式の違い（rs）
+
+- 列名の新旧は `internal/rs/csv.go` の `columnAliases`（キーは 2025 年度までの列名）。ヘッダにキーの列がなければ別名を探す
+- 2-1 の読み方は「`翌年度への繰越し(合計）` 列（`carriedOutColumn`）があるか」で切り替える（`internal/rs/budget.go`）。ない形式（2026〜）では、行がある予算年度の空欄を 0、執行率を 100 で割る、翌年度繰越は翌予算年度の前年度から繰越し
+- 5-1 は新旧どちらの行構造も上位（ブロック → 支出先 → 契約）から順に読む（`internal/rs/payee.go`）
+- 4-1 の `予定通り終了` はループ検証で `終了予定` と同じに扱う
+- 2026 形式のテストは `internal/rs/sheet2026_test.go`。変更点の一覧は `docs/data-survey.md` §9
 
 ## 年度の対応（lifecycle）
 
