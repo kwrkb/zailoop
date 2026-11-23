@@ -1,6 +1,6 @@
 // zailoop は行政事業レビュー見える化サイトの CSV から、1 事業の予算ライフサイクルを表示する。
 //
-//	zailoop fetch [--year 2024] [--data data]
+//	zailoop fetch [--year 2024] [--data data] [--refresh]
 //	zailoop show <予算事業ID> [--year 2024] [--data data] [--sources]
 //	zailoop version
 package main
@@ -29,7 +29,10 @@ import (
 const usage = `zailoop: 予算事業のライフサイクル（要求→成立→執行→決算→評価→翌年度反映）を表示する
 
 使い方:
-  zailoop fetch [--year 2024] [--data data]      配布 ZIP を取得して展開する（既存はスキップ）
+  zailoop fetch [--year 2024] [--data data] [--refresh]
+                                                  配布 ZIP を取得して展開する（既存はスキップ）
+                                                  --refresh で既存も取り直し、変わったものだけ差し替える
+                                                  SHA-256 と取得日を data/raw/fetch-<年度>.json に記録する
   zailoop show <予算事業ID> [--year 2024 | --years 2024,2025] [--data data] [--sources]
                                                   1 事業のライフサイクルを表示する
                                                   --years で複数年度を結合し、推移とループ検証を加える
@@ -188,6 +191,7 @@ func isBoolFlag(f *flag.Flag) bool {
 func runFetch(args []string) error {
 	fs := flag.NewFlagSet("fetch", flag.ContinueOnError)
 	year, data := commonFlags(fs)
+	refresh := fs.Bool("refresh", false, "既存の ZIP も配布元から取り直し、内容が変わったものだけ差し替える（旧版は data/raw/old/ に残す）")
 	pos, err := parseInterspersed(fs, args)
 	if errors.Is(err, flag.ErrHelp) {
 		return nil
@@ -200,7 +204,7 @@ func runFetch(args []string) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	_, err = fetch.Fetch(ctx, *year, filepath.Join(*data, "raw"), filepath.Join(*data, "csv"), fetch.Options{Log: os.Stderr})
+	_, err = fetch.Fetch(ctx, *year, filepath.Join(*data, "raw"), filepath.Join(*data, "csv"), fetch.Options{Log: os.Stderr, Refresh: *refresh})
 	return err
 }
 
