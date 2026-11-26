@@ -55,6 +55,10 @@ func TestLoad2026Budget884(t *testing.T) {
 	assertYen(t, "FY2025 翌年度繰越", fy25.Total.CarriedOut, 0)
 	assertYen(t, "FY2025 執行", fy25.Total.Executed, 14036000)
 	assertYen(t, "FY2025 会計別 第1次補正", fy25.Accounts[0].Supplementary[0], 0)
+	// 0 と読んでも、セルが空欄だったことは残す（書かれていた当初・現額・執行は空欄ではない）。
+	if fy25.Total.Blank != (BudgetBlank{}) {
+		t.Errorf("FY2025 Blank = %+v, want none", fy25.Total.Blank)
+	}
 	// 執行率は百分率で書かれるので比率に直す。
 	if r := fy25.Total.ExecRate; !r.Valid || math.Abs(r.Value-0.796) > 1e-9 {
 		t.Errorf("FY2025 執行率 = %+v, want 0.796", r)
@@ -86,6 +90,9 @@ func TestLoad2026AllZeroYearAndNoBudget(t *testing.T) {
 	}
 	assertYen(t, "FY2026 当初", fy26.Total.Initial, 0)
 	assertYen(t, "FY2026 現額", fy26.Total.Current, 0)
+	if want := (BudgetBlank{Initial: true, Current: true, Executed: true}); fy26.Total.Blank != want {
+		t.Errorf("FY2026 Blank = %+v, want %+v", fy26.Total.Blank, want)
+	}
 	// 21437 は予算がなく、2-1・2-2 とも予算年度まで空欄の 1 行だけを持つ。
 	s := loadFixture2026(t, "21437")
 	if len(s.Budgets) != 0 || len(s.Items) != 0 {

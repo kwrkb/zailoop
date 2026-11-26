@@ -112,7 +112,7 @@
   <table class="timeline">
     <thead><tr><th>FY</th><th class="num">① 要求</th><th class="num">② 当初</th><th class="num">② 現額</th><th class="num">③ 執行</th><th>③ 執行率</th><th class="num">④ 不用相当</th><th>出典</th></tr></thead>
     <tbody>{{range .TL.Years}}
-      <tr><th>{{.FY}}</th><td class="num">{{yen .Request}}</td><td class="num">{{yen .Initial}}</td><td class="num">{{yen .Current}}</td><td class="num">{{execText .}}</td><td>{{if isOK .ExecState}}{{ratio .ExecRate}}{{else}}—{{end}}</td><td class="num">{{unusedText .}}</td><td class="muted">{{.Source}}年度シート{{if .Revised}}（改訂）{{end}}</td></tr>
+      <tr><th>{{.FY}}</th><td class="num">{{yen .Request}}</td><td class="num">{{yen .Initial}}</td><td class="num">{{yen .Current}}</td><td class="num">{{execText .}}</td><td>{{if isOK .ExecState}}{{ratio .ExecRate}}{{else}}—{{end}}</td><td class="num">{{unusedText .}}</td><td class="muted">{{.Source}}年度シート{{.RevisedText}}</td></tr>
     {{end}}</tbody>
   </table>
   <h3>ループ検証 <small class="muted">シートの評価・反映 → 翌年の成立・執行</small></h3>

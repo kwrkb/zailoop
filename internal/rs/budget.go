@@ -86,6 +86,8 @@ func (b *budgetBuilder) row(r *csvRow) error {
 		}
 		if b.merged {
 			total.ExecRate.Value /= 100
+			blank := func(name string) bool { return strings.TrimSpace(r.text(name)) == "" }
+			total.Blank = BudgetBlank{Initial: blank("当初予算（合計）"), Current: blank("計（歳出予算現額合計）"), Executed: blank("執行額（合計）")}
 		} else {
 			total.CarriedOut = r.yen(carriedOutColumn)
 		}

@@ -322,7 +322,11 @@ func evidenceText(ev lifecycle.Evidence) string {
 			return ""
 		}
 		r := ev.Revisions[0]
-		s := fmt.Sprintf("FY%d %s %d年度シート %s → %d年度シート %s", r.FY, r.Item, r.OldSheet, render.YenShort(r.Old), r.NewSheet, render.YenShort(r.New))
+		newText := render.YenShort(r.New)
+		if r.NewBlank {
+			newText = lifecycle.BlankText
+		}
+		s := fmt.Sprintf("FY%d %s %d年度シート %s → %d年度シート %s", r.FY, r.Item, r.OldSheet, render.YenShort(r.Old), r.NewSheet, newText)
 		if n := len(ev.Revisions) - 1; n > 0 {
 			s += fmt.Sprintf("（ほか %d 件）", n)
 		}
