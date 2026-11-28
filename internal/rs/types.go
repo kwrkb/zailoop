@@ -57,6 +57,23 @@ type BudgetTotal struct {
 	NextRequest       Yen    // 翌年度要求額（合計）
 	ChangeReason      string // 主な増減理由
 	Notes             string // その他特記事項
+	// Blank は 2026 年度形式で、セルが空欄だったので 0 と読んだ項目。シートに 0 と書かれていたわけではない。
+	// 値の読み方（空欄を 0 と読む）は変えず、年度間の差異の注記で「空欄だった」と言うためだけに持つ。
+	Blank BudgetBlank
+}
+
+// BudgetBlank は合計行のうち、シート間の差異で比べる 3 項目のセルが空欄だったか。
+type BudgetBlank struct {
+	Initial  bool // 当初予算（合計）
+	Current  bool // 計（歳出予算現額合計）
+	Executed bool // 執行額（合計）
+}
+
+// and は繰り返しの別の行の印と合わせ、どちらでも空欄だった項目だけを残す。
+func (b *BudgetBlank) and(o BudgetBlank) {
+	b.Initial = b.Initial && o.Initial
+	b.Current = b.Current && o.Current
+	b.Executed = b.Executed && o.Executed
 }
 
 // BudgetAccount は 2-1 の会計別行（列「当初予算」〜「要望額」）。

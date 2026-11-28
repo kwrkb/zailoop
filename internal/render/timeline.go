@@ -39,10 +39,7 @@ func Timeline(w io.Writer, tl *lifecycle.Timeline, opt Options) error {
 		case lifecycle.StateNeedsReview:
 			unused = "要確認"
 		}
-		src := fmt.Sprintf("%dシート", y.Source)
-		if len(y.Revised) > 0 {
-			src += "（改訂）"
-		}
+		src := fmt.Sprintf("%dシート", y.Source) + y.RevisedText()
 		p.f("  %-6d %-18s %-18s %-18s %-18s %-8s %-18s %s", y.FY, Yen(y.Request), Yen(y.Initial), Yen(y.Current), exec, rate, unused, src)
 	}
 	p.f("")

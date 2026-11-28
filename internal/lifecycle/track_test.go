@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -38,7 +39,7 @@ func TestTrack884(t *testing.T) {
 	if y2024.Source != 2025 || y2024.Initial.Value != 11200000 || y2024.Executed.Value != 15000000 || y2024.ExecState != StateOK || y2024.Request.Value != 42023000 {
 		t.Errorf("FY2024 row = %+v", y2024)
 	}
-	if len(y2024.Revised) != 1 || !strings.Contains(y2024.Revised[0].String(), "当初予算") || !strings.Contains(y2024.Revised[0].String(), "11169000") {
+	if len(y2024.Revised) != 1 || !strings.Contains(y2024.Revised[0].String(), "当初予算") || !strings.Contains(y2024.Revised[0].String(), "2024年度シート 11,169,000 円 → 2025年度シート 11,200,000 円") {
 		t.Errorf("revised = %v", y2024.Revised)
 	}
 	y2025 := tl.Years[4]
@@ -215,5 +216,81 @@ func TestJudgeLoopRenamedEnd(t *testing.T) {
 		if got := judgeLoop(lp); got != VerdictContradiction {
 			t.Errorf("%s: verdict = %v, want contradiction", reflection, got)
 		}
+	}
+}
+
+func TestRevisionBlank(t *testing.T) {
+	// 古いシートの確定した年度の執行額が、新しいシート（2026 年度形式）では空欄で、0 と読まれた場合。
+	// 値は 0 のまま扱い（兆候の数え方は変えない）、表示だけ「空欄」と言う。
+	s25 := &rs.Sheet{FiscalYear: 2025, Project: rs.Project{ID: "1"}, Budgets: []rs.BudgetYear{
+		{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(0), Current: y(0), Executed: y(1878711000)}},
+	}}
+	newSheet := func(blank rs.BudgetBlank) *rs.Sheet {
+		return &rs.Sheet{FiscalYear: 2026, Project: rs.Project{ID: "1"}, Budgets: []rs.BudgetYear{
+			{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(0), Current: y(0), Executed: y(0), Blank: blank}},
+		}}
+	}
+	tl := Track([]*rs.Sheet{s25, newSheet(rs.BudgetBlank{Initial: true, Current: true, Executed: true})}, Thresholds{})
+	row := tl.Years[0]
+	if len(row.Revised) != 1 || !row.Revised[0].NewBlank || row.Executed.Value != 0 || !row.Executed.Valid {
+		t.Fatalf("row = %+v", row)
+	}
+	if got, want := row.Revised[0].String(), "FY2024 執行額: 2025年度シート 1,878,711,000 円 → 2026年度シート 空欄（0 円として表示）"; got != want {
+		t.Errorf("String = %q, want %q", got, want)
+	}
+	if len(tl.Notes) != 1 || tl.Notes[0] != row.Revised[0].String() {
+		t.Errorf("notes = %v", tl.Notes)
+	}
+	if got, want := row.RevisedText(), "（改訂・空欄あり）"; got != want {
+		t.Errorf("RevisedText = %q, want %q", got, want)
+	}
+	if !SummarizeTimeline(tl, Thresholds{}).Signals.Has(SignalAmountRevised) {
+		t.Error("空欄でも改訂の兆候は数える")
+	}
+	// 新しいシートが 0 と書いていた場合（2025 年度形式まで）は、これまでどおり
+	tl = Track([]*rs.Sheet{s25, newSheet(rs.BudgetBlank{})}, Thresholds{})
+	row = tl.Years[0]
+	if got, want := row.Revised[0].String(), "FY2024 執行額: 2025年度シート 1,878,711,000 円 → 2026年度シート 0 円"; got != want {
+		t.Errorf("String = %q, want %q", got, want)
+	}
+	if got := row.RevisedText(); got != "（改訂）" {
+		t.Errorf("RevisedText = %q", got)
+	}
+	// 間のシートが 0 と書いていた額が、最新のシートで空欄になっただけなら「空欄」とは言わない。
+	// その 0 は府省が書いた値で、最新のシートはそれを空欄という書き方で引き継いでいる。
+	s24 := &rs.Sheet{FiscalYear: 2024, Project: rs.Project{ID: "1"}, Budgets: []rs.BudgetYear{
+		{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(14087561000), Current: y(14087561000)}},
+	}}
+	mid := &rs.Sheet{FiscalYear: 2025, Project: rs.Project{ID: "1"}, Budgets: []rs.BudgetYear{
+		{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(0), Current: y(0), Executed: y(0)}},
+	}}
+	tl = Track([]*rs.Sheet{s24, mid, newSheet(rs.BudgetBlank{Initial: true, Current: true, Executed: true})}, Thresholds{})
+	row = tl.Years[0]
+	if len(row.Revised) != 2 || row.Revised[0].NewBlank || row.Revised[1].NewBlank || row.RevisedText() != "（改訂）" {
+		t.Errorf("間のシートが 0 と書いた場合: revised = %v, text = %q", row.Revised, row.RevisedText())
+	}
+	if got, want := row.Revised[0].String(), "FY2024 当初予算: 2024年度シート 14,087,561,000 円 → 2026年度シート 0 円"; got != want {
+		t.Errorf("String = %q, want %q", got, want)
+	}
+	// 間のシートがあっても、そのシートの額が最新と違えば（0 以外なら）空欄と言う
+	tl = Track([]*rs.Sheet{s24, s25, newSheet(rs.BudgetBlank{Initial: true, Current: true, Executed: true})}, Thresholds{})
+	row = tl.Years[0]
+	var blankItems []string
+	for _, r := range row.Revised {
+		if r.NewBlank {
+			blankItems = append(blankItems, fmt.Sprintf("%d %s", r.OldSheet, r.Item))
+		}
+	}
+	// 2025 年度シートは当初・現額を 0 と書き、執行額だけ 0 以外。空欄と言うのは執行額だけ
+	if strings.Join(blankItems, ",") != "2025 執行額" {
+		t.Errorf("blank revisions = %v（revised = %v）", blankItems, row.Revised)
+	}
+	// 改訂のない年度には何も付けない（空欄が 0 のままの項目は差異ではない）
+	same := &rs.Sheet{FiscalYear: 2025, Project: rs.Project{ID: "1"}, Budgets: []rs.BudgetYear{
+		{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(0), Current: y(0), Executed: y(0)}},
+	}}
+	tl = Track([]*rs.Sheet{same, newSheet(rs.BudgetBlank{Initial: true, Current: true, Executed: true})}, Thresholds{})
+	if got := tl.Years[0].RevisedText(); got != "" || len(tl.Notes) != 0 {
+		t.Errorf("RevisedText = %q, notes = %v", got, tl.Notes)
 	}
 }

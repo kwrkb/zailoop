@@ -55,6 +55,10 @@ func TestLoad2026Budget884(t *testing.T) {
 	assertYen(t, "FY2025 翌年度繰越", fy25.Total.CarriedOut, 0)
 	assertYen(t, "FY2025 執行", fy25.Total.Executed, 14036000)
 	assertYen(t, "FY2025 会計別 第1次補正", fy25.Accounts[0].Supplementary[0], 0)
+	// 0 と読んでも、セルが空欄だったことは残す（書かれていた当初・現額・執行は空欄ではない）。
+	if fy25.Total.Blank != (BudgetBlank{}) {
+		t.Errorf("FY2025 Blank = %+v, want none", fy25.Total.Blank)
+	}
 	// 執行率は百分率で書かれるので比率に直す。
 	if r := fy25.Total.ExecRate; !r.Valid || math.Abs(r.Value-0.796) > 1e-9 {
 		t.Errorf("FY2025 執行率 = %+v, want 0.796", r)
@@ -86,6 +90,9 @@ func TestLoad2026AllZeroYearAndNoBudget(t *testing.T) {
 	}
 	assertYen(t, "FY2026 当初", fy26.Total.Initial, 0)
 	assertYen(t, "FY2026 現額", fy26.Total.Current, 0)
+	if want := (BudgetBlank{Initial: true, Current: true, Executed: true}); fy26.Total.Blank != want {
+		t.Errorf("FY2026 Blank = %+v, want %+v", fy26.Total.Blank, want)
+	}
 	// 21437 は予算がなく、2-1・2-2 とも予算年度まで空欄の 1 行だけを持つ。
 	s := loadFixture2026(t, "21437")
 	if len(s.Budgets) != 0 || len(s.Items) != 0 {
@@ -179,6 +186,28 @@ func TestLoad2026ConflictingTotals(t *testing.T) {
 	b := s.Budget(2025)
 	if b == nil || b.HasTotal || len(b.Issues) != 1 || !strings.Contains(b.Issues[0], "合計列の値が行によって異なります（2通り）") {
 		t.Fatalf("budget = %+v", b)
+	}
+}
+
+func TestLoad2026RepeatedTotalsBlankAndZero(t *testing.T) {
+	// 繰り返しの行で、同じ合計が空欄と 0 で書かれていても 1 つの合計として扱う。
+	// 空欄の印は、すべての行で空欄だった項目にだけ残す。
+	row := func(account, initial string) csvValues {
+		return csvValues{"予算年度": "2025", "会計区分": "一般会計", "会計": account,
+			"当初予算（一般会計・特別会計合計）": initial}
+	}
+	dir := newTestDir2026(t, map[string][]csvValues{"2-1": {row("一般会計", ""), row("特別会計", "0")}})
+	s, err := dir.LoadSheet("test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := s.Budget(2025)
+	if b == nil || !b.HasTotal || len(b.Issues) > 0 {
+		t.Fatalf("budget = %+v", b)
+	}
+	assertYen(t, "当初", b.Total.Initial, 0)
+	if want := (BudgetBlank{Current: true, Executed: true}); b.Total.Blank != want {
+		t.Errorf("Blank = %+v, want %+v", b.Total.Blank, want)
 	}
 }
 

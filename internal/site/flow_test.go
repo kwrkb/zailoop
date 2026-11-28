@@ -162,6 +162,27 @@ func TestSignalBadgesAmountRevised(t *testing.T) {
 	}
 }
 
+func TestSignalBadgesAmountRevisedBlank(t *testing.T) {
+	// 新しいシートのセルが空欄で 0 と読んだ改訂は、根拠の文で「空欄」と言う
+	s25 := &rs.Sheet{FiscalYear: 2025, Project: rs.Project{ID: "1"}, Budgets: []rs.BudgetYear{
+		{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(0), Current: y(0), Executed: y(1_878_711_000)}},
+	}}
+	s26 := &rs.Sheet{FiscalYear: 2026, Project: rs.Project{ID: "1"}, Budgets: []rs.BudgetYear{
+		{Year: 2024, HasTotal: true, Total: rs.BudgetTotal{Initial: y(0), Current: y(0), Executed: y(0), Blank: rs.BudgetBlank{Executed: true}}},
+	}}
+	tl := lifecycle.Track([]*rs.Sheet{s25, s26}, lifecycle.Thresholds{})
+	sm := lifecycle.SummarizeTimeline(tl, lifecycle.Thresholds{})
+	var got string
+	for _, b := range signalBadges(tl, sm.Signals, lifecycle.Thresholds{}) {
+		if b.Label == "シート間の改訂" {
+			got = b.Evidence
+		}
+	}
+	if want := "FY2024 執行額 2025年度シート 18.8 億円 → 2026年度シート 空欄（0 円として表示）"; got != want {
+		t.Errorf("evidence = %q, want %q", got, want)
+	}
+}
+
 func TestDigestSupplementaryOnly(t *testing.T) {
 	tl := lifecycle.Track([]*rs.Sheet{sheetWith(rs.BudgetTotal{Initial: y(0), Supplementary: y(500000000), Current: y(500000000), Executed: y(400000000)})}, lifecycle.Thresholds{})
 	got := strings.Join(digest(tl), "\n")

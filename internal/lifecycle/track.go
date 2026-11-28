@@ -2,7 +2,9 @@ package lifecycle
 
 import (
 	"fmt"
+	"slices"
 	"sort"
+	"strconv"
 
 	"github.com/kwrkb/zailoop/internal/rs"
 )
@@ -40,10 +42,49 @@ type Revision struct {
 	Old      rs.Yen
 	NewSheet int // 値を取ったシートの事業年度
 	New      rs.Yen
+	// NewBlank は新しいシートのセルが空欄で、0 と読んだこと（2026 年度形式）。
+	// 値は 0 のまま扱い、表示で「空欄」と言うためだけに使う。どちらの値が正しいかは言わない。
+	// 間のシートが同じ額（0）を空欄でなく書いていれば立てない。その 0 は府省が書いた値で、空欄はそれを引き継いだだけ。
+	NewBlank bool
 }
 
+// BlankText は空欄を 0 と読んだ値の表示。
+const BlankText = "空欄（0 円として表示）"
+
 func (r Revision) String() string {
-	return fmt.Sprintf("FY%d %s: 事業年度%d シート %d → 事業年度%d シート %d", r.FY, r.Item, r.OldSheet, r.Old.Value, r.NewSheet, r.New.Value)
+	newText := yenText(r.New.Value)
+	if r.NewBlank {
+		newText = BlankText
+	}
+	return fmt.Sprintf("FY%d %s: %d年度シート %s → %d年度シート %s", r.FY, r.Item, r.OldSheet, yenText(r.Old.Value), r.NewSheet, newText)
+}
+
+// yenText は円を 3 桁区切りで表す（render.YenValue と同じ書き方。render はこのパッケージを読むので、ここに持つ）。
+func yenText(v int64) string {
+	neg := v < 0
+	if neg {
+		v = -v
+	}
+	s := strconv.FormatInt(v, 10)
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "," + s[i:]
+	}
+	if neg {
+		s = "-" + s
+	}
+	return s + " 円"
+}
+
+// RevisedText は推移の表の出典に添える印。改訂がなければ空。
+// 表の列を広げないよう短く書き、どの項目が空欄だったかは注記と兆候の根拠に任せる。
+func (y YearRow) RevisedText() string {
+	if len(y.Revised) == 0 {
+		return ""
+	}
+	if slices.ContainsFunc(y.Revised, func(r Revision) bool { return r.NewBlank }) {
+		return "（改訂・空欄あり）"
+	}
+	return "（改訂）"
 }
 
 // LoopVerdict はシート S の「反映状況」と、翌年のシートで分かった FY S+1 当初予算の整合。
@@ -170,6 +211,7 @@ func trackYears(ss []*rs.Sheet, tl *Timeline) []YearRow {
 		row := YearRow{FY: fy, ExecState: StateMissing, UnusedState: StateMissing}
 		// 最新シートから順に探す
 		var newest *rs.Sheet
+		var written [3]bool // 最新より古いシートが、最新と同じ額を空欄でなく書いていた項目（当初予算・歳出予算現額・執行額の順）
 		for i := len(ss) - 1; i >= 0; i-- {
 			if b := ss[i].Budget(fy); b != nil && b.HasTotal {
 				if newest == nil {
@@ -187,19 +229,26 @@ func trackYears(ss []*rs.Sheet, tl *Timeline) []YearRow {
 				} else {
 					// 古いシートとの差異
 					nb := newest.Budget(fy).Total
-					for _, d := range []struct {
-						name   string
-						o, n   rs.Yen
-						unless bool
+					for k, d := range []struct {
+						name           string
+						o, n           rs.Yen
+						unless         bool
+						oBlank, nBlank bool // 古いシート・最新シートのセルが空欄だった
 					}{
-						{"当初予算", b.Total.Initial, nb.Initial, false},
-						{"歳出予算現額", b.Total.Current, nb.Current, false},
-						{"執行額", b.Total.Executed, nb.Executed, fy > ss[i].FiscalYear-1}, // 古いシートで未確定なら比較しない
+						{"当初予算", b.Total.Initial, nb.Initial, false, b.Total.Blank.Initial, nb.Blank.Initial},
+						{"歳出予算現額", b.Total.Current, nb.Current, false, b.Total.Blank.Current, nb.Blank.Current},
+						{"執行額", b.Total.Executed, nb.Executed, fy > ss[i].FiscalYear-1, b.Total.Blank.Executed, nb.Blank.Executed}, // 古いシートで未確定なら比較しない
 					} {
-						if d.unless || !d.o.Valid || !d.n.Valid || d.o.Value == d.n.Value {
+						if d.unless || !d.o.Valid || !d.n.Valid {
 							continue
 						}
-						r := Revision{FY: fy, Item: d.name, OldSheet: ss[i].FiscalYear, Old: d.o, NewSheet: newest.FiscalYear, New: d.n}
+						if d.o.Value == d.n.Value {
+							if !d.oBlank {
+								written[k] = true // このシートは最新と同じ額を、空欄でなく書いている
+							}
+							continue
+						}
+						r := Revision{FY: fy, Item: d.name, OldSheet: ss[i].FiscalYear, Old: d.o, NewSheet: newest.FiscalYear, New: d.n, NewBlank: d.nBlank && !written[k]}
 						row.Revised = append(row.Revised, r)
 						tl.Notes = append(tl.Notes, r.String())
 					}
