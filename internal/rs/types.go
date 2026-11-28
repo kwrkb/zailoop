@@ -69,6 +69,13 @@ type BudgetBlank struct {
 	Executed bool // 執行額（合計）
 }
 
+// and は繰り返しの別の行の印と合わせ、どちらでも空欄だった項目だけを残す。
+func (b *BudgetBlank) and(o BudgetBlank) {
+	b.Initial = b.Initial && o.Initial
+	b.Current = b.Current && o.Current
+	b.Executed = b.Executed && o.Executed
+}
+
 // BudgetAccount は 2-1 の会計別行（列「当初予算」〜「要望額」）。
 type BudgetAccount struct {
 	Category      string // 会計区分（一般会計/特別会計）

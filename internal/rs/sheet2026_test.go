@@ -189,6 +189,28 @@ func TestLoad2026ConflictingTotals(t *testing.T) {
 	}
 }
 
+func TestLoad2026RepeatedTotalsBlankAndZero(t *testing.T) {
+	// 繰り返しの行で、同じ合計が空欄と 0 で書かれていても 1 つの合計として扱う。
+	// 空欄の印は、すべての行で空欄だった項目にだけ残す。
+	row := func(account, initial string) csvValues {
+		return csvValues{"予算年度": "2025", "会計区分": "一般会計", "会計": account,
+			"当初予算（一般会計・特別会計合計）": initial}
+	}
+	dir := newTestDir2026(t, map[string][]csvValues{"2-1": {row("一般会計", ""), row("特別会計", "0")}})
+	s, err := dir.LoadSheet("test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := s.Budget(2025)
+	if b == nil || !b.HasTotal || len(b.Issues) > 0 {
+		t.Fatalf("budget = %+v", b)
+	}
+	assertYen(t, "当初", b.Total.Initial, 0)
+	if want := (BudgetBlank{Current: true, Executed: true}); b.Total.Blank != want {
+		t.Errorf("Blank = %+v, want %+v", b.Total.Blank, want)
+	}
+}
+
 func TestLoad2026CarriedOutFromConflictingNextYear(t *testing.T) {
 	row := func(year, carried string) csvValues {
 		return csvValues{"予算年度": year, "会計区分": "一般会計", "会計": "一般会計",

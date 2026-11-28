@@ -91,12 +91,19 @@ func (b *budgetBuilder) row(r *csvRow) error {
 		} else {
 			total.CarriedOut = r.yen(carriedOutColumn)
 		}
+		// 空欄と 0 は同じ値として比べる。空欄の印は、繰り返しのすべての行で空欄だった項目にだけ残す
+		// （どこかの行に 0 と書かれていれば、府省が 0 と書いたものとする）。
+		blank := total.Blank
+		total.Blank = budget.Total.Blank
 		switch {
 		case b.totalCounts[year] == 0:
+			total.Blank = blank
 			budget.Total = total
 			b.totalCounts[year]++
 		case !b.merged || total != budget.Total:
 			b.totalCounts[year]++
+		default:
+			budget.Total.Blank.and(blank)
 		}
 	}
 	if hasAccount {
